@@ -7,8 +7,36 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
-        <h1>Tic Tac Toe</h1>
+    <!-- Login Modal -->
+    <div id="loginModal" class="modal">
+        <div class="modal-content">
+            <h2>Login to Play</h2>
+            <div id="loginStatus" class="login-status"></div>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="username">Username:</label>
+                    <input type="text" id="username" name="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password:</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+                <button type="submit">Login</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="container" id="gameContainer" style="display: none;">
+        <div class="header">
+            <h1>Tic Tac Toe</h1>
+            <div class="user-info">
+                <div class="logged-users">
+                    <div class="user-slot" id="player1Slot">Player 1: <span id="player1Name">Waiting...</span></div>
+                    <div class="user-slot" id="player2Slot">Player 2: <span id="player2Name">Waiting...</span></div>
+                </div>
+                <button id="logoutBtn">Logout</button>
+            </div>
+        </div>
 
         <div class="game-mode">
             <label>
@@ -50,6 +78,7 @@
         </div>
     </div>
 
+    <script src="/socket.io/socket.io.js"></script>
     <script src="script.js"></script>
 </body>
 </html>

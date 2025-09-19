@@ -327,8 +327,7 @@ class TicTacToeMultiplayer {
             `;
         } else if (this.gameState.gamePhase === 'movement') {
             phaseDisplay.innerHTML = `
-                <strong>Movement Phase</strong><br>
-                Click your piece, then click an adjacent empty cell to move it
+                <strong>Movement Phase</strong>
             `;
         }
     }

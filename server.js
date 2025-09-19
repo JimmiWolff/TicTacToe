@@ -142,8 +142,13 @@ io.on('connection', (socket) => {
     socket.on('login', (data) => {
         const { username, password } = data;
 
-        // Validate credentials
-        if (!users[username] || users[username] !== password) {
+        // Find username case-insensitively
+        const actualUsername = Object.keys(users).find(
+            user => user.toLowerCase() === username.toLowerCase()
+        );
+
+        // Validate credentials (username case-insensitive, password case-sensitive)
+        if (!actualUsername || users[actualUsername] !== password) {
             socket.emit('loginResponse', {
                 success: false,
                 message: 'Invalid username or password.'
@@ -151,8 +156,8 @@ io.on('connection', (socket) => {
             return;
         }
 
-        // Check if user is already logged in
-        const existingPlayer = gameState.players.find(p => p.username === username);
+        // Check if user is already logged in (case-insensitive)
+        const existingPlayer = gameState.players.find(p => p.username.toLowerCase() === actualUsername.toLowerCase());
         if (existingPlayer) {
             socket.emit('loginResponse', {
                 success: false,
@@ -173,7 +178,7 @@ io.on('connection', (socket) => {
         // Add player
         const player = {
             id: socket.id,
-            username: username,
+            username: actualUsername,
             symbol: gameState.players.length === 0 ? 'X' : 'O',
             loginTime: new Date()
         };
@@ -184,7 +189,7 @@ io.on('connection', (socket) => {
         // Send success response
         socket.emit('loginResponse', {
             success: true,
-            message: `Welcome, ${username}!`,
+            message: `Welcome, ${actualUsername}!`,
             player: player
         });
 
@@ -200,7 +205,7 @@ io.on('connection', (socket) => {
             maxPieces: gameState.maxPieces
         });
 
-        console.log(`${username} logged in as ${player.symbol}`);
+        console.log(`${actualUsername} logged in as ${player.symbol}`);
     });
 
     // Handle game moves (both placement and movement)

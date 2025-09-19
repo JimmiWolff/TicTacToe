@@ -211,7 +211,7 @@ class TicTacToeMultiplayer {
                 this.selectedCell = index;
                 this.isMoving = true;
                 this.highlightSelectedPiece(index);
-                this.showGameMessage(`Selected ${this.currentUser.symbol} piece. Click an adjacent empty cell to move it.`, 'info');
+                this.showGameMessage(`Selected ${this.currentUser.symbol} piece. Click any empty cell to move it.`, 'info');
 
             } else {
                 // Second click: Move the selected piece
@@ -226,11 +226,7 @@ class TicTacToeMultiplayer {
                     return;
                 }
 
-                // Check if the move is to an adjacent cell
-                if (!this.isAdjacentCell(this.selectedCell, index)) {
-                    this.showGameMessage('You can only move to adjacent cells!', 'error');
-                    return;
-                }
+                // Pieces can move to any empty cell on the board
 
                 // Make the move
                 this.socket.emit('makeMove', {
@@ -243,18 +239,6 @@ class TicTacToeMultiplayer {
         }
     }
 
-    isAdjacentCell(fromIndex, toIndex) {
-        const fromRow = Math.floor(fromIndex / 3);
-        const fromCol = fromIndex % 3;
-        const toRow = Math.floor(toIndex / 3);
-        const toCol = toIndex % 3;
-
-        const rowDiff = Math.abs(fromRow - toRow);
-        const colDiff = Math.abs(fromCol - toCol);
-
-        // Adjacent includes diagonals (8 directions)
-        return (rowDiff <= 1 && colDiff <= 1) && !(rowDiff === 0 && colDiff === 0);
-    }
 
     highlightSelectedPiece(index) {
         // Remove previous highlights

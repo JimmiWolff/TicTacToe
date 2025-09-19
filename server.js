@@ -111,32 +111,10 @@ function isValidMove(fromIndex, toIndex, player) {
         return false;
     }
 
-    // In movement phase, pieces can only move to adjacent cells
-    const adjacentCells = getAdjacentCells(fromIndex);
-    return adjacentCells.includes(toIndex);
+    // Pieces can move to any empty cell on the board
+    return true;
 }
 
-function getAdjacentCells(index) {
-    const row = Math.floor(index / 3);
-    const col = index % 3;
-    const adjacent = [];
-
-    // Check all 8 directions (including diagonals)
-    for (let r = -1; r <= 1; r++) {
-        for (let c = -1; c <= 1; c++) {
-            if (r === 0 && c === 0) continue; // Skip the current cell
-
-            const newRow = row + r;
-            const newCol = col + c;
-
-            if (newRow >= 0 && newRow < 3 && newCol >= 0 && newCol < 3) {
-                adjacent.push(newRow * 3 + newCol);
-            }
-        }
-    }
-
-    return adjacent;
-}
 
 function switchToMovementPhase() {
     if (gameState.piecesPlaced.X >= gameState.maxPieces &&
@@ -278,7 +256,7 @@ io.on('connection', (socket) => {
             }
 
             if (!isValidMove(fromIndex, cellIndex, currentSymbol)) {
-                socket.emit('error', { message: 'Invalid move! You can only move your pieces to adjacent empty cells.' });
+                socket.emit('error', { message: 'Invalid move! You can only move your pieces to empty cells.' });
                 return;
             }
 

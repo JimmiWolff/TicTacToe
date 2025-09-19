@@ -66,7 +66,11 @@ const users = {
     'player2': 'password2',
     'alice': 'alice123',
     'bob': 'bob456',
-    'admin': 'admin789'
+    'admin': 'admin789',
+    'Jimmi': 'Jimmi1311',
+    'Donna': 'Donna1980',
+    'Villads': 'Villads2210',
+    'Freja': 'Freja0304'
 };
 
 // Helper functions

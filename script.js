@@ -301,34 +301,10 @@ class TicTacToeMultiplayer {
     }
 
     updateGamePhaseDisplay() {
-        // Find or create phase display element
+        // Remove the phase display entirely for cleaner UI
         let phaseDisplay = document.getElementById('gamePhaseDisplay');
-        if (!phaseDisplay) {
-            phaseDisplay = document.createElement('div');
-            phaseDisplay.id = 'gamePhaseDisplay';
-            phaseDisplay.className = 'game-phase-display';
-
-            // Insert after current player display
-            const currentPlayerElement = document.querySelector('.current-player');
-            if (currentPlayerElement) {
-                currentPlayerElement.parentNode.insertBefore(phaseDisplay, currentPlayerElement.nextSibling);
-            }
-        }
-
-        // Update phase information
-        if (this.gameState.gamePhase === 'placement') {
-            const xPlaced = this.gameState.piecesPlaced?.X || 0;
-            const oPlaced = this.gameState.piecesPlaced?.O || 0;
-            const maxPieces = this.gameState.maxPieces || 3;
-
-            phaseDisplay.innerHTML = `
-                <strong>Placement Phase</strong><br>
-                X: ${xPlaced}/${maxPieces} pieces | O: ${oPlaced}/${maxPieces} pieces
-            `;
-        } else if (this.gameState.gamePhase === 'movement') {
-            phaseDisplay.innerHTML = `
-                <strong>Movement Phase</strong>
-            `;
+        if (phaseDisplay) {
+            phaseDisplay.remove();
         }
     }
 

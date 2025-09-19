@@ -52,7 +52,12 @@ const gameState = {
     board: ['', '', '', '', '', '', '', '', ''],
     currentPlayer: 'X',
     gameActive: true,
-    scores: { X: 0, O: 0, draw: 0 }
+    scores: { X: 0, O: 0, draw: 0 },
+    // New properties for move pieces feature
+    piecesPlaced: { X: 0, O: 0 },
+    gamePhase: 'placement', // 'placement' or 'movement'
+    selectedPiece: null,
+    maxPieces: 3
 };
 
 // User credentials
@@ -69,6 +74,9 @@ function resetGame() {
     gameState.board = ['', '', '', '', '', '', '', '', ''];
     gameState.currentPlayer = 'X';
     gameState.gameActive = true;
+    gameState.piecesPlaced = { X: 0, O: 0 };
+    gameState.gamePhase = 'placement';
+    gameState.selectedPiece = null;
 }
 
 function checkWin(board) {
@@ -89,6 +97,54 @@ function checkWin(board) {
 
 function checkDraw(board) {
     return board.every(cell => cell !== '');
+}
+
+// New helper functions for move pieces feature
+function isValidMove(fromIndex, toIndex, player) {
+    // Check if fromIndex has the player's piece
+    if (gameState.board[fromIndex] !== player) {
+        return false;
+    }
+
+    // Check if toIndex is empty
+    if (gameState.board[toIndex] !== '') {
+        return false;
+    }
+
+    // In movement phase, pieces can only move to adjacent cells
+    const adjacentCells = getAdjacentCells(fromIndex);
+    return adjacentCells.includes(toIndex);
+}
+
+function getAdjacentCells(index) {
+    const row = Math.floor(index / 3);
+    const col = index % 3;
+    const adjacent = [];
+
+    // Check all 8 directions (including diagonals)
+    for (let r = -1; r <= 1; r++) {
+        for (let c = -1; c <= 1; c++) {
+            if (r === 0 && c === 0) continue; // Skip the current cell
+
+            const newRow = row + r;
+            const newCol = col + c;
+
+            if (newRow >= 0 && newRow < 3 && newCol >= 0 && newCol < 3) {
+                adjacent.push(newRow * 3 + newCol);
+            }
+        }
+    }
+
+    return adjacent;
+}
+
+function switchToMovementPhase() {
+    if (gameState.piecesPlaced.X >= gameState.maxPieces &&
+        gameState.piecesPlaced.O >= gameState.maxPieces) {
+        gameState.gamePhase = 'movement';
+        return true;
+    }
+    return false;
 }
 
 // Serve the main HTML file
@@ -156,15 +212,18 @@ io.on('connection', (socket) => {
             board: gameState.board,
             currentPlayer: gameState.currentPlayer,
             gameActive: gameState.gameActive,
-            scores: gameState.scores
+            scores: gameState.scores,
+            piecesPlaced: gameState.piecesPlaced,
+            gamePhase: gameState.gamePhase,
+            maxPieces: gameState.maxPieces
         });
 
         console.log(`${username} logged in as ${player.symbol}`);
     });
 
-    // Handle game moves
+    // Handle game moves (both placement and movement)
     socket.on('makeMove', (data) => {
-        const { cellIndex } = data;
+        const { cellIndex, fromIndex } = data; // fromIndex is provided for movement phase
 
         if (!socket.player) {
             socket.emit('error', { message: 'You must be logged in to play.' });
@@ -177,8 +236,8 @@ io.on('connection', (socket) => {
             return;
         }
 
-        // Check if game is active and cell is empty
-        if (!gameState.gameActive || gameState.board[cellIndex] !== '') {
+        // Check if game is active
+        if (!gameState.gameActive) {
             return;
         }
 
@@ -188,44 +247,90 @@ io.on('connection', (socket) => {
             return;
         }
 
-        // Make the move
-        gameState.board[cellIndex] = gameState.currentPlayer;
+        const currentSymbol = gameState.currentPlayer;
+        let moveSuccessful = false;
 
-        // Check for win
-        const winResult = checkWin(gameState.board);
-        if (winResult) {
-            gameState.gameActive = false;
-            gameState.scores[winResult.winner]++;
+        if (gameState.gamePhase === 'placement') {
+            // PLACEMENT PHASE: Place a new piece
+            if (gameState.board[cellIndex] !== '') {
+                socket.emit('error', { message: 'Cell is already occupied!' });
+                return;
+            }
 
-            io.emit('gameOver', {
-                winner: winResult.winner,
-                winnerName: gameState.players.find(p => p.symbol === winResult.winner)?.username,
-                pattern: winResult.pattern,
-                board: gameState.board,
-                scores: gameState.scores
-            });
-        } else if (checkDraw(gameState.board)) {
-            gameState.gameActive = false;
-            gameState.scores.draw++;
+            if (gameState.piecesPlaced[currentSymbol] >= gameState.maxPieces) {
+                socket.emit('error', { message: 'You have already placed all your pieces!' });
+                return;
+            }
 
-            io.emit('gameOver', {
-                winner: null,
-                draw: true,
-                board: gameState.board,
-                scores: gameState.scores
-            });
-        } else {
-            // Switch player
-            gameState.currentPlayer = gameState.currentPlayer === 'X' ? 'O' : 'X';
+            // Place the piece
+            gameState.board[cellIndex] = currentSymbol;
+            gameState.piecesPlaced[currentSymbol]++;
+            moveSuccessful = true;
 
-            // Broadcast updated game state
-            io.emit('gameStateUpdate', {
-                players: gameState.players,
-                board: gameState.board,
-                currentPlayer: gameState.currentPlayer,
-                gameActive: gameState.gameActive,
-                scores: gameState.scores
-            });
+            // Check if we should switch to movement phase
+            switchToMovementPhase();
+
+        } else if (gameState.gamePhase === 'movement') {
+            // MOVEMENT PHASE: Move an existing piece
+            if (fromIndex === undefined || fromIndex === null) {
+                socket.emit('error', { message: 'You must select a piece to move!' });
+                return;
+            }
+
+            if (!isValidMove(fromIndex, cellIndex, currentSymbol)) {
+                socket.emit('error', { message: 'Invalid move! You can only move your pieces to adjacent empty cells.' });
+                return;
+            }
+
+            // Move the piece
+            gameState.board[fromIndex] = '';
+            gameState.board[cellIndex] = currentSymbol;
+            moveSuccessful = true;
+        }
+
+        if (moveSuccessful) {
+            // Check for win after any successful move
+            const winResult = checkWin(gameState.board);
+            if (winResult) {
+                gameState.gameActive = false;
+                gameState.scores[winResult.winner]++;
+
+                io.emit('gameOver', {
+                    winner: winResult.winner,
+                    winnerName: gameState.players.find(p => p.symbol === winResult.winner)?.username,
+                    pattern: winResult.pattern,
+                    board: gameState.board,
+                    scores: gameState.scores,
+                    gamePhase: gameState.gamePhase
+                });
+            } else if (gameState.gamePhase === 'placement' && checkDraw(gameState.board)) {
+                // Only check for draw in placement phase
+                gameState.gameActive = false;
+                gameState.scores.draw++;
+
+                io.emit('gameOver', {
+                    winner: null,
+                    draw: true,
+                    board: gameState.board,
+                    scores: gameState.scores,
+                    gamePhase: gameState.gamePhase
+                });
+            } else {
+                // Switch player
+                gameState.currentPlayer = gameState.currentPlayer === 'X' ? 'O' : 'X';
+
+                // Broadcast updated game state
+                io.emit('gameStateUpdate', {
+                    players: gameState.players,
+                    board: gameState.board,
+                    currentPlayer: gameState.currentPlayer,
+                    gameActive: gameState.gameActive,
+                    scores: gameState.scores,
+                    piecesPlaced: gameState.piecesPlaced,
+                    gamePhase: gameState.gamePhase,
+                    maxPieces: gameState.maxPieces
+                });
+            }
         }
     });
 
@@ -239,7 +344,10 @@ io.on('connection', (socket) => {
             board: gameState.board,
             currentPlayer: gameState.currentPlayer,
             gameActive: gameState.gameActive,
-            scores: gameState.scores
+            scores: gameState.scores,
+            piecesPlaced: gameState.piecesPlaced,
+            gamePhase: gameState.gamePhase,
+            maxPieces: gameState.maxPieces
         });
     });
 
@@ -253,7 +361,10 @@ io.on('connection', (socket) => {
             board: gameState.board,
             currentPlayer: gameState.currentPlayer,
             gameActive: gameState.gameActive,
-            scores: gameState.scores
+            scores: gameState.scores,
+            piecesPlaced: gameState.piecesPlaced,
+            gamePhase: gameState.gamePhase,
+            maxPieces: gameState.maxPieces
         });
     });
 
@@ -284,7 +395,10 @@ io.on('connection', (socket) => {
                 board: gameState.board,
                 currentPlayer: gameState.currentPlayer,
                 gameActive: gameState.gameActive,
-                scores: gameState.scores
+                scores: gameState.scores,
+                piecesPlaced: gameState.piecesPlaced,
+                gamePhase: gameState.gamePhase,
+                maxPieces: gameState.maxPieces
             });
 
             console.log(`${socket.player.username} disconnected and removed from game`);

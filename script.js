@@ -7,8 +7,16 @@ class TicTacToeMultiplayer {
             board: ['', '', '', '', '', '', '', '', ''],
             currentPlayer: 'X',
             gameActive: true,
-            scores: { X: 0, O: 0, draw: 0 }
+            scores: { X: 0, O: 0, draw: 0 },
+            // New properties for move pieces feature
+            piecesPlaced: { X: 0, O: 0 },
+            gamePhase: 'placement',
+            maxPieces: 3
         };
+
+        // State for move pieces functionality
+        this.selectedCell = null;
+        this.isMoving = false;
 
         this.initializeElements();
         this.setupSocketListeners();
@@ -161,7 +169,7 @@ class TicTacToeMultiplayer {
     }
 
     handleCellClick(index) {
-        if (!this.gameState.gameActive || this.gameState.board[index] !== '') {
+        if (!this.gameState.gameActive) {
             return;
         }
 
@@ -175,7 +183,92 @@ class TicTacToeMultiplayer {
             return;
         }
 
-        this.socket.emit('makeMove', { cellIndex: index });
+        if (this.gameState.gamePhase === 'placement') {
+            // PLACEMENT PHASE: Place a new piece
+            if (this.gameState.board[index] !== '') {
+                this.showGameMessage('Cell is already occupied!', 'error');
+                return;
+            }
+
+            if (this.gameState.piecesPlaced[this.currentUser.symbol] >= this.gameState.maxPieces) {
+                this.showGameMessage('You have already placed all your pieces!', 'error');
+                return;
+            }
+
+            this.socket.emit('makeMove', { cellIndex: index });
+
+        } else if (this.gameState.gamePhase === 'movement') {
+            // MOVEMENT PHASE: Select and move pieces
+            const cellContent = this.gameState.board[index];
+
+            if (!this.isMoving) {
+                // First click: Select a piece to move
+                if (cellContent !== this.currentUser.symbol) {
+                    this.showGameMessage('You can only select your own pieces!', 'error');
+                    return;
+                }
+
+                this.selectedCell = index;
+                this.isMoving = true;
+                this.highlightSelectedPiece(index);
+                this.showGameMessage(`Selected ${this.currentUser.symbol} piece. Click an adjacent empty cell to move it.`, 'info');
+
+            } else {
+                // Second click: Move the selected piece
+                if (index === this.selectedCell) {
+                    // Clicking the same cell cancels the move
+                    this.cancelMove();
+                    return;
+                }
+
+                if (cellContent !== '') {
+                    this.showGameMessage('Target cell must be empty!', 'error');
+                    return;
+                }
+
+                // Check if the move is to an adjacent cell
+                if (!this.isAdjacentCell(this.selectedCell, index)) {
+                    this.showGameMessage('You can only move to adjacent cells!', 'error');
+                    return;
+                }
+
+                // Make the move
+                this.socket.emit('makeMove', {
+                    cellIndex: index,
+                    fromIndex: this.selectedCell
+                });
+
+                this.cancelMove(); // Reset move state
+            }
+        }
+    }
+
+    isAdjacentCell(fromIndex, toIndex) {
+        const fromRow = Math.floor(fromIndex / 3);
+        const fromCol = fromIndex % 3;
+        const toRow = Math.floor(toIndex / 3);
+        const toCol = toIndex % 3;
+
+        const rowDiff = Math.abs(fromRow - toRow);
+        const colDiff = Math.abs(fromCol - toCol);
+
+        // Adjacent includes diagonals (8 directions)
+        return (rowDiff <= 1 && colDiff <= 1) && !(rowDiff === 0 && colDiff === 0);
+    }
+
+    highlightSelectedPiece(index) {
+        // Remove previous highlights
+        this.cells.forEach(cell => cell.classList.remove('selected'));
+
+        // Highlight the selected piece
+        this.cells[index].classList.add('selected');
+    }
+
+    cancelMove() {
+        this.selectedCell = null;
+        this.isMoving = false;
+        this.cells.forEach(cell => cell.classList.remove('selected'));
+        this.showGameMessage('', '');
     }
 
     resetGame() {
@@ -197,10 +290,46 @@ class TicTacToeMultiplayer {
         }
         this.playerDisplay.textContent = currentPlayerName;
 
+        // Update game phase display
+        this.updateGamePhaseDisplay();
+
         // Clear game status if game is active
         if (this.gameState.gameActive) {
             this.gameStatus.textContent = '';
             this.gameStatus.className = 'game-status';
+        }
+    }
+
+    updateGamePhaseDisplay() {
+        // Find or create phase display element
+        let phaseDisplay = document.getElementById('gamePhaseDisplay');
+        if (!phaseDisplay) {
+            phaseDisplay = document.createElement('div');
+            phaseDisplay.id = 'gamePhaseDisplay';
+            phaseDisplay.className = 'game-phase-display';
+
+            // Insert after current player display
+            const currentPlayerElement = document.querySelector('.current-player');
+            if (currentPlayerElement) {
+                currentPlayerElement.parentNode.insertBefore(phaseDisplay, currentPlayerElement.nextSibling);
+            }
+        }
+
+        // Update phase information
+        if (this.gameState.gamePhase === 'placement') {
+            const xPlaced = this.gameState.piecesPlaced?.X || 0;
+            const oPlaced = this.gameState.piecesPlaced?.O || 0;
+            const maxPieces = this.gameState.maxPieces || 3;
+
+            phaseDisplay.innerHTML = `
+                <strong>Placement Phase</strong><br>
+                X: ${xPlaced}/${maxPieces} pieces | O: ${oPlaced}/${maxPieces} pieces
+            `;
+        } else if (this.gameState.gamePhase === 'movement') {
+            phaseDisplay.innerHTML = `
+                <strong>Movement Phase</strong><br>
+                Click your piece, then click an adjacent empty cell to move it
+            `;
         }
     }
 

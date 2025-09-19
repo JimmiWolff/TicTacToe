@@ -1,0 +1,6 @@
+.git\
+.gitignore
+README.md
+deploy-azure-improved.cmd
+exclude.txt
+*.md

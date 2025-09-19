@@ -6,17 +6,44 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
+
+// Azure-friendly Socket.IO configuration
 const io = socketIo(server, {
     cors: {
         origin: "*",
-        methods: ["GET", "POST"]
-    }
+        methods: ["GET", "POST"],
+        credentials: true
+    },
+    transports: ['websocket', 'polling'],
+    allowEIO3: true,
+    pingTimeout: 60000,
+    pingInterval: 25000
 });
 
 // Middleware
-app.use(cors());
+app.use(cors({
+    origin: "*",
+    credentials: true
+}));
 app.use(express.json());
 app.use(express.static(path.join(__dirname)));
+
+// Azure-specific middleware
+app.use((req, res, next) => {
+    // Add Azure-friendly headers
+    res.setHeader('X-Powered-By', 'Express on Azure');
+    next();
+});
+
+// Health check endpoint for Azure
+app.get('/health', (req, res) => {
+    res.status(200).json({
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+        players: gameState.players.length
+    });
+});
 
 // Game state
 const gameState = {
@@ -265,11 +292,43 @@ io.on('connection', (socket) => {
     });
 });
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-    console.log('Available users:');
-    Object.keys(users).forEach(username => {
-        console.log(`  ${username} : ${users[username]}`);
+// Azure-friendly port configuration
+const PORT = process.env.PORT || process.env.WEBSITES_PORT || 3000;
+const HOST = process.env.WEBSITE_HOSTNAME || '0.0.0.0';
+
+// Enhanced error handling for Azure
+server.on('error', (error) => {
+    console.error('Server error:', error);
+    if (error.code === 'EADDRINUSE') {
+        console.error(`Port ${PORT} is already in use`);
+        process.exit(1);
+    }
+});
+
+// Graceful shutdown handling
+process.on('SIGTERM', () => {
+    console.log('SIGTERM received, shutting down gracefully');
+    server.close(() => {
+        console.log('Process terminated');
+        process.exit(0);
     });
+});
+
+process.on('SIGINT', () => {
+    console.log('SIGINT received, shutting down gracefully');
+    server.close(() => {
+        console.log('Process terminated');
+        process.exit(0);
+    });
+});
+
+server.listen(PORT, HOST, () => {
+    console.log(`🚀 Server running on ${process.env.WEBSITE_HOSTNAME ? 'https://' + process.env.WEBSITE_HOSTNAME : `http://localhost:${PORT}`}`);
+    console.log(`📊 Health check: /health`);
+    console.log(`🎮 Game ready for ${gameState.maxPlayers} players`);
+    console.log('👥 Available users:');
+    Object.keys(users).forEach(username => {
+        console.log(`   ${username} : ${users[username]}`);
+    });
+    console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
 });

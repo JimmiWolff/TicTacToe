@@ -1,21 +1,31 @@
 {
   "name": "tic-tac-toe-multiplayer",
-  "version": "1.0.0",
-  "description": "Multiplayer Tic Tac Toe game with login system",
+  "version": "1.0.1",
+  "description": "Azure-compatible Multiplayer Tic Tac Toe game with login system",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "build": "echo 'No build step required'",
+    "postinstall": "echo 'Installation complete'",
+    "test": "echo 'No tests specified'"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
   },
   "dependencies": {
     "express": "^4.18.2",
-    "socket.io": "^4.7.2",
+    "socket.io": "^4.7.5",
     "cors": "^2.8.5"
   },
-  "keywords": ["tic-tac-toe", "multiplayer", "websocket", "game"],
-  "author": "",
-  "license": "MIT"
+  "devDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JimmiWolff/TicTacToe.git"
+  },
+  "keywords": ["tic-tac-toe", "multiplayer", "websocket", "game", "azure", "nodejs"],
+  "author": "JimmiWolff",
+  "license": "MIT",
+  "homepage": "https://github.com/JimmiWolff/TicTacToe#readme"
 }

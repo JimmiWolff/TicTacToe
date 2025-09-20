@@ -3,6 +3,8 @@ const http = require('http');
 const socketIo = require('socket.io');
 const cors = require('cors');
 const path = require('path');
+const jwt = require('jsonwebtoken');
+require('dotenv').config();
 
 const app = express();
 const server = http.createServer(app);
@@ -35,6 +37,80 @@ app.use((req, res, next) => {
     next();
 });
 
+// Auth0 configuration endpoint
+app.get('/auth/config', (req, res) => {
+    res.json({
+        domain: AUTH0_DOMAIN,
+        clientId: AUTH0_CLIENT_ID,
+        audience: AUTH0_AUDIENCE
+    });
+});
+
+// JWT verification middleware
+function verifyToken(token) {
+    try {
+        // In a real application, you would verify with Auth0's public key
+        // For now, we'll do basic JWT parsing
+        const decoded = jwt.decode(token);
+        return decoded;
+    } catch (error) {
+        return null;
+    }
+}
+
+// User registration endpoint (for custom users)
+app.post('/auth/register', (req, res) => {
+    const { username, email, password } = req.body;
+
+    if (!username || !email || !password) {
+        return res.status(400).json({ error: 'Username, email, and password are required' });
+    }
+
+    // Check if user already exists
+    if (registeredUsers.has(email)) {
+        return res.status(409).json({ error: 'User already exists' });
+    }
+
+    // Store user (in production, hash the password!)
+    registeredUsers.set(email, {
+        username,
+        email,
+        password, // In production: bcrypt.hash(password, 10)
+        createdAt: new Date(),
+        lastLogin: null
+    });
+
+    res.json({
+        success: true,
+        message: 'User registered successfully',
+        username
+    });
+});
+
+// Get user profile
+app.get('/auth/profile', (req, res) => {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader) {
+        return res.status(401).json({ error: 'No authorization header' });
+    }
+
+    const token = authHeader.split(' ')[1];
+    const decoded = verifyToken(token);
+
+    if (!decoded) {
+        return res.status(401).json({ error: 'Invalid token' });
+    }
+
+    res.json({
+        user: {
+            sub: decoded.sub,
+            email: decoded.email,
+            username: decoded.nickname || decoded.name
+        }
+    });
+});
+
 // Health check endpoint for Azure
 app.get('/health', (req, res) => {
     res.status(200).json({
@@ -60,8 +136,14 @@ const gameState = {
     maxPieces: 3
 };
 
-// User credentials
-const users = {
+// Auth0 Configuration
+const AUTH0_DOMAIN = process.env.AUTH0_DOMAIN;
+const AUTH0_CLIENT_ID = process.env.AUTH0_CLIENT_ID;
+const AUTH0_CLIENT_SECRET = process.env.AUTH0_CLIENT_SECRET;
+const AUTH0_AUDIENCE = process.env.AUTH0_AUDIENCE;
+
+// Legacy users for backward compatibility (will be phased out)
+const legacyUsers = {
     'player1': 'password1',
     'player2': 'password2',
     'alice': 'alice123',
@@ -72,6 +154,9 @@ const users = {
     'Villads': 'Villads2210',
     'Freja': 'Freja0304'
 };
+
+// In-memory user storage (in production, use a proper database)
+const registeredUsers = new Map();
 
 // Helper functions
 function resetGame() {
@@ -140,18 +225,54 @@ io.on('connection', (socket) => {
 
     // Handle login
     socket.on('login', (data) => {
-        const { username, password } = data;
+        const { username, password, token } = data;
 
-        // Find username case-insensitively
-        const actualUsername = Object.keys(users).find(
-            user => user.toLowerCase() === username.toLowerCase()
-        );
+        let actualUsername = null;
+        let userInfo = null;
 
-        // Validate credentials (username case-insensitive, password case-sensitive)
-        if (!actualUsername || users[actualUsername] !== password) {
+        // Try Auth0 token first
+        if (token) {
+            const decoded = verifyToken(token);
+            if (decoded) {
+                actualUsername = decoded.nickname || decoded.name || decoded.email;
+                userInfo = {
+                    id: decoded.sub,
+                    email: decoded.email,
+                    username: actualUsername,
+                    authType: 'auth0'
+                };
+            } else {
+                socket.emit('loginResponse', {
+                    success: false,
+                    message: 'Invalid authentication token.'
+                });
+                return;
+            }
+        }
+        // Fallback to legacy login
+        else if (username && password) {
+            // Find username case-insensitively in legacy users
+            actualUsername = Object.keys(legacyUsers).find(
+                user => user.toLowerCase() === username.toLowerCase()
+            );
+
+            // Validate legacy credentials
+            if (!actualUsername || legacyUsers[actualUsername] !== password) {
+                socket.emit('loginResponse', {
+                    success: false,
+                    message: 'Invalid username or password.'
+                });
+                return;
+            }
+
+            userInfo = {
+                username: actualUsername,
+                authType: 'legacy'
+            };
+        } else {
             socket.emit('loginResponse', {
                 success: false,
-                message: 'Invalid username or password.'
+                message: 'Please provide either username/password or authentication token.'
             });
             return;
         }
@@ -180,7 +301,10 @@ io.on('connection', (socket) => {
             id: socket.id,
             username: actualUsername,
             symbol: gameState.players.length === 0 ? 'X' : 'O',
-            loginTime: new Date()
+            loginTime: new Date(),
+            authType: userInfo.authType,
+            email: userInfo.email || null,
+            userId: userInfo.id || null
         };
 
         gameState.players.push(player);
@@ -428,8 +552,8 @@ server.listen(PORT, HOST, () => {
     console.log(`📊 Health check: /health`);
     console.log(`🎮 Game ready for ${gameState.maxPlayers} players`);
     console.log('👥 Available users:');
-    Object.keys(users).forEach(username => {
-        console.log(`   ${username} : ${users[username]}`);
+    Object.keys(legacyUsers).forEach(username => {
+        console.log(`   ${username} : ${legacyUsers[username]}`);
     });
     console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
 });

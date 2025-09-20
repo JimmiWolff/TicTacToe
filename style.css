@@ -410,3 +410,102 @@ button {
     font-size: 16px;
     text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
 }
+
+/* Auth0 and Registration Styles */
+.login-methods {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.auth-button {
+    padding: 15px 25px;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.1em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+}
+
+.auth-button.primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.auth-button.primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+}
+
+.auth-button.secondary {
+    background: #f8f9fa;
+    color: #495057;
+    border: 2px solid #dee2e6;
+}
+
+.auth-button.secondary:hover {
+    background: #e9ecef;
+    transform: translateY(-2px);
+}
+
+.divider {
+    text-align: center;
+    position: relative;
+    margin: 25px 0;
+}
+
+.divider::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: #dee2e6;
+}
+
+.divider span {
+    background: white;
+    padding: 0 15px;
+    color: #6c757d;
+    font-size: 0.9em;
+    font-weight: 500;
+}
+
+.legacy-form,
+.local-form {
+    margin-top: 10px;
+}
+
+.registration-info {
+    background: rgba(102, 126, 234, 0.1);
+    border: 1px solid rgba(102, 126, 234, 0.2);
+    border-radius: 8px;
+    padding: 15px;
+    margin: 20px 0;
+    font-size: 0.9em;
+    color: #495057;
+    line-height: 1.5;
+}
+
+.form-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: space-between;
+    margin-top: 20px;
+}
+
+.form-actions button {
+    flex: 1;
+}
+
+.form-actions button[type="button"] {
+    background: #6c757d;
+    color: white;
+}
+
+.form-actions button[type="button"]:hover {
+    background: #5a6268;
+}

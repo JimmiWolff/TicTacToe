@@ -2,6 +2,8 @@ class TicTacToeMultiplayer {
     constructor() {
         this.socket = io();
         this.currentUser = null;
+        this.auth0 = null;
+        this.isAuthenticated = false;
         this.gameState = {
             players: [],
             board: ['', '', '', '', '', '', '', '', ''],
@@ -19,6 +21,7 @@ class TicTacToeMultiplayer {
         this.isMoving = false;
 
         this.initializeElements();
+        this.initializeAuth0();
         this.setupSocketListeners();
         this.addEventListeners();
     }
@@ -26,10 +29,19 @@ class TicTacToeMultiplayer {
     initializeElements() {
         // Login elements
         this.loginModal = document.getElementById('loginModal');
-        this.loginForm = document.getElementById('loginForm');
+        this.legacyLoginForm = document.getElementById('legacyLoginForm');
         this.loginStatus = document.getElementById('loginStatus');
         this.gameContainer = document.getElementById('gameContainer');
         this.logoutBtn = document.getElementById('logoutBtn');
+
+        // Auth0 and registration elements
+        this.auth0LoginBtn = document.getElementById('auth0LoginBtn');
+        this.registerBtn = document.getElementById('registerBtn');
+        this.registrationModal = document.getElementById('registrationModal');
+        this.registrationStatus = document.getElementById('registrationStatus');
+        this.auth0RegisterBtn = document.getElementById('auth0RegisterBtn');
+        this.localRegistrationForm = document.getElementById('localRegistrationForm');
+        this.backToLoginBtn = document.getElementById('backToLoginBtn');
 
         // Player info elements
         this.player1Slot = document.getElementById('player1Slot');
@@ -51,6 +63,40 @@ class TicTacToeMultiplayer {
 
         // Game mode elements
         this.modeRadios = document.querySelectorAll('input[name="mode"]');
+    }
+
+    async initializeAuth0() {
+        try {
+            // Get Auth0 configuration from server
+            const response = await fetch('/auth/config');
+            const config = await response.json();
+
+            this.auth0 = await createAuth0Client({
+                domain: config.domain,
+                clientId: config.clientId,
+                authorizationParams: {
+                    redirect_uri: window.location.origin,
+                    audience: config.audience
+                }
+            });
+
+            // Check if user is authenticated (returning from Auth0)
+            const isAuthenticated = await this.auth0.isAuthenticated();
+            if (isAuthenticated) {
+                await this.handleAuth0Login();
+            }
+
+            // Handle Auth0 callback
+            if (window.location.search.includes('code=')) {
+                await this.auth0.handleRedirectCallback();
+                await this.handleAuth0Login();
+                // Clean up URL
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+        } catch (error) {
+            console.error('Auth0 initialization error:', error);
+            this.showLoginStatus('Auth0 setup required. Using legacy login only.', 'info');
+        }
     }
 
     setupSocketListeners() {
@@ -121,8 +167,17 @@ class TicTacToeMultiplayer {
     }
 
     addEventListeners() {
-        // Login form
-        this.loginForm.addEventListener('submit', (e) => this.handleLogin(e));
+        // Legacy login form
+        this.legacyLoginForm.addEventListener('submit', (e) => this.handleLegacyLogin(e));
+
+        // Auth0 login
+        this.auth0LoginBtn.addEventListener('click', () => this.handleAuth0LoginClick());
+
+        // Registration
+        this.registerBtn.addEventListener('click', () => this.showRegistrationModal());
+        this.auth0RegisterBtn.addEventListener('click', () => this.handleAuth0RegisterClick());
+        this.localRegistrationForm.addEventListener('submit', (e) => this.handleLocalRegistration(e));
+        this.backToLoginBtn.addEventListener('click', () => this.showLoginModal());
 
         // Logout button
         this.logoutBtn.addEventListener('click', () => this.handleLogout());
@@ -142,7 +197,7 @@ class TicTacToeMultiplayer {
         });
     }
 
-    handleLogin(e) {
+    handleLegacyLogin(e) {
         e.preventDefault();
         const username = document.getElementById('username').value.trim();
         const password = document.getElementById('password').value;
@@ -153,19 +208,135 @@ class TicTacToeMultiplayer {
         }
 
         this.socket.emit('login', { username, password });
-        this.loginForm.reset();
+        this.legacyLoginForm.reset();
     }
 
-    handleLogout() {
+    async handleLogout() {
         this.socket.disconnect();
         this.currentUser = null;
-        this.resetToLoginScreen();
+        this.isAuthenticated = false;
 
-        // Reconnect after a short delay
-        setTimeout(() => {
-            this.socket.connect();
-            this.showLoginStatus('Logged out successfully', 'info');
-        }, 500);
+        // Logout from Auth0 if authenticated there
+        if (this.auth0 && await this.auth0.isAuthenticated()) {
+            await this.auth0.logout({
+                logoutParams: {
+                    returnTo: window.location.origin
+                }
+            });
+        } else {
+            this.resetToLoginScreen();
+            // Reconnect after a short delay
+            setTimeout(() => {
+                this.socket.connect();
+                this.showLoginStatus('Logged out successfully', 'info');
+            }, 500);
+        }
+    }
+
+    async handleAuth0LoginClick() {
+        if (!this.auth0) {
+            this.showLoginStatus('Auth0 not configured. Please use legacy login.', 'error');
+            return;
+        }
+
+        try {
+            await this.auth0.loginWithRedirect({
+                authorizationParams: {
+                    prompt: 'login'
+                }
+            });
+        } catch (error) {
+            console.error('Auth0 login error:', error);
+            this.showLoginStatus('Auth0 login failed. Please try again.', 'error');
+        }
+    }
+
+    async handleAuth0RegisterClick() {
+        if (!this.auth0) {
+            this.showLoginStatus('Auth0 not configured. Please use local registration.', 'error');
+            return;
+        }
+
+        try {
+            await this.auth0.loginWithRedirect({
+                authorizationParams: {
+                    screen_hint: 'signup'
+                }
+            });
+        } catch (error) {
+            console.error('Auth0 registration error:', error);
+            this.showRegistrationStatus('Auth0 registration failed. Please try again.', 'error');
+        }
+    }
+
+    async handleAuth0Login() {
+        if (!this.auth0) return;
+
+        try {
+            const user = await this.auth0.getUser();
+            const token = await this.auth0.getTokenSilently();
+
+            if (user && token) {
+                this.isAuthenticated = true;
+                this.socket.emit('login', { token });
+            }
+        } catch (error) {
+            console.error('Auth0 token error:', error);
+            this.showLoginStatus('Authentication failed. Please try logging in again.', 'error');
+        }
+    }
+
+    async handleLocalRegistration(e) {
+        e.preventDefault();
+        const username = document.getElementById('regUsername').value.trim();
+        const email = document.getElementById('regEmail').value.trim();
+        const password = document.getElementById('regPassword').value;
+
+        if (!username || !email || !password) {
+            this.showRegistrationStatus('Please fill in all fields.', 'error');
+            return;
+        }
+
+        try {
+            const response = await fetch('/auth/register', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ username, email, password })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                this.showRegistrationStatus(`Account created successfully! Welcome, ${data.username}!`, 'success');
+                this.localRegistrationForm.reset();
+                setTimeout(() => {
+                    this.showLoginModal();
+                }, 2000);
+            } else {
+                this.showRegistrationStatus(data.error || 'Registration failed', 'error');
+            }
+        } catch (error) {
+            console.error('Registration error:', error);
+            this.showRegistrationStatus('Registration failed. Please try again.', 'error');
+        }
+    }
+
+    showRegistrationModal() {
+        this.loginModal.style.display = 'none';
+        this.registrationModal.style.display = 'block';
+    }
+
+    showLoginModal() {
+        this.registrationModal.style.display = 'none';
+        this.loginModal.style.display = 'block';
+        this.showRegistrationStatus('', '');
+    }
+
+    showRegistrationStatus(message, type) {
+        this.registrationStatus.textContent = message;
+        this.registrationStatus.className = `login-status ${type}`;
     }
 
     handleCellClick(index) {

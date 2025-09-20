@@ -15,16 +15,27 @@
     "npm": ">=8.0.0"
   },
   "dependencies": {
+    "@auth0/auth0-spa-js": "^2.4.1",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.2",
     "express": "^4.18.2",
-    "socket.io": "^4.7.5",
-    "cors": "^2.8.5"
+    "express-jwt": "^8.5.1",
+    "express-oauth-server": "^2.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "socket.io": "^4.7.5"
   },
-  "devDependencies": {},
   "repository": {
     "type": "git",
     "url": "https://github.com/JimmiWolff/TicTacToe.git"
   },
-  "keywords": ["tic-tac-toe", "multiplayer", "websocket", "game", "azure", "nodejs"],
+  "keywords": [
+    "tic-tac-toe",
+    "multiplayer",
+    "websocket",
+    "game",
+    "azure",
+    "nodejs"
+  ],
   "author": "JimmiWolff",
   "license": "MIT",
   "homepage": "https://github.com/JimmiWolff/TicTacToe#readme"

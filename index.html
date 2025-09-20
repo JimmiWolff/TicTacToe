@@ -7,6 +7,13 @@
     <link rel="stylesheet" href="style.css">
     <!-- Auth0 SPA SDK -->
     <script src="https://cdn.auth0.com/js/auth0-spa-js/2.0/auth0-spa-js.production.js"></script>
+    <script>
+        // Debug: Check if Auth0 SDK loaded
+        window.addEventListener('load', function() {
+            console.log('Auth0 SDK loaded:', typeof createAuth0Client !== 'undefined');
+            console.log('createAuth0Client function:', createAuth0Client);
+        });
+    </script>
 </head>
 <body>
     <!-- Login Modal -->

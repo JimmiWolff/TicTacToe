@@ -67,9 +67,21 @@ class TicTacToeMultiplayer {
 
     async initializeAuth0() {
         try {
+            // Check if Auth0 SDK is available
+            if (typeof createAuth0Client === 'undefined') {
+                throw new Error('Auth0 SDK not loaded. createAuth0Client is undefined.');
+            }
+
+            console.log('Initializing Auth0...');
+
             // Get Auth0 configuration from server
             const response = await fetch('/auth/config');
+            if (!response.ok) {
+                throw new Error(`Failed to fetch Auth0 config: ${response.status}`);
+            }
+
             const config = await response.json();
+            console.log('Auth0 config loaded:', config);
 
             this.auth0 = await createAuth0Client({
                 domain: config.domain,
@@ -80,14 +92,18 @@ class TicTacToeMultiplayer {
                 }
             });
 
+            console.log('Auth0 client created successfully');
+
             // Check if user is authenticated (returning from Auth0)
             const isAuthenticated = await this.auth0.isAuthenticated();
             if (isAuthenticated) {
+                console.log('User is already authenticated');
                 await this.handleAuth0Login();
             }
 
             // Handle Auth0 callback
             if (window.location.search.includes('code=')) {
+                console.log('Handling Auth0 callback...');
                 await this.auth0.handleRedirectCallback();
                 await this.handleAuth0Login();
                 // Clean up URL
@@ -95,6 +111,7 @@ class TicTacToeMultiplayer {
             }
         } catch (error) {
             console.error('Auth0 initialization error:', error);
+            console.error('Error details:', error.message);
             this.showLoginStatus('Auth0 setup required. Using legacy login only.', 'info');
         }
     }

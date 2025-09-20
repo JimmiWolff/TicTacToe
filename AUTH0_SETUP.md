@@ -57,10 +57,10 @@ From the **Settings** tab of your application, copy these values:
 
 ```env
 # Auth0 Configuration
-AUTH0_DOMAIN=dev-abc123.us.auth0.com
-AUTH0_CLIENT_ID=your-actual-client-id-here
+AUTH0_DOMAIN=dev-oi0kyicuguit0u6y.eu.auth0.com
+AUTH0_CLIENT_ID=3bVJoo8MQs6iTztvw02Ci0H2Qrroq0Hg
 AUTH0_CLIENT_SECRET=your-client-secret-here
-AUTH0_AUDIENCE=https://dev-abc123.us.auth0.com/api/v2/
+AUTH0_AUDIENCE=https://dev-oi0kyicuguit0u6y.eu.auth0.com/api/v2/
 
 # Application Configuration
 NODE_ENV=development
@@ -69,6 +69,8 @@ PORT=3000
 # Session Secret
 SESSION_SECRET=tic-tac-toe-super-secret-key-change-in-production-2024
 ```
+
+**Note:** You still need to get your `AUTH0_CLIENT_SECRET` from the Auth0 Dashboard. Go to your application's Settings tab and copy the "Client Secret" value.
 
 ## Step 6: Configure User Management Features
 

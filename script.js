@@ -62,6 +62,22 @@ class TicTacToeMultiplayer {
 
         // Game mode elements
         this.modeRadios = document.querySelectorAll('input[name="mode"]');
+
+        // Settings modal elements
+        this.settingsBtn = document.getElementById('settingsBtn');
+        this.settingsModal = document.getElementById('settingsModal');
+        this.closeSettingsBtn = document.getElementById('closeSettingsBtn');
+
+        // Color picker elements
+        this.xColorPicker = document.getElementById('xColorPicker');
+        this.oColorPicker = document.getElementById('oColorPicker');
+        this.xColorPreview = document.getElementById('xColorPreview');
+        this.oColorPreview = document.getElementById('oColorPreview');
+        this.xColorLabel = document.getElementById('xColorLabel');
+        this.oColorLabel = document.getElementById('oColorLabel');
+
+        // Initialize color customization
+        this.initializeColorCustomization();
     }
 
     async initializeAuth0() {
@@ -119,6 +135,8 @@ class TicTacToeMultiplayer {
 
                 setTimeout(() => {
                     this.showGameInterface();
+                    // Update color picker access after login
+                    this.updateColorPickerAccess();
                 }, 1000);
             } else {
                 this.showLoginStatus(data.message, 'error');
@@ -132,6 +150,17 @@ class TicTacToeMultiplayer {
             this.updatePlayerDisplay();
             this.updateScoreDisplay();
             this.checkGameReadiness();
+
+            // Update colors from server state
+            if (state.pieceColors) {
+                this.syncColorsFromServer(state.pieceColors);
+            }
+        });
+
+        // Listen for color changes from other players
+        this.socket.on('colorChanged', (data) => {
+            const { piece, color } = data;
+            this.applyColorChange(piece, color, false); // false = don't emit to server
         });
 
         // Game over
@@ -176,7 +205,16 @@ class TicTacToeMultiplayer {
     }
 
     addEventListeners() {
-        // Legacy login form
+        // Settings modal
+        this.settingsBtn.addEventListener('click', () => this.showSettings());
+        this.closeSettingsBtn.addEventListener('click', () => this.hideSettings());
+
+        // Close settings modal when clicking outside
+        this.settingsModal.addEventListener('click', (e) => {
+            if (e.target === this.settingsModal) {
+                this.hideSettings();
+            }
+        });
 
         // Auth0 login
         this.auth0LoginBtn.addEventListener('click', () => this.handleAuth0LoginClick());
@@ -440,6 +478,9 @@ class TicTacToeMultiplayer {
         }
         this.playerDisplay.textContent = currentPlayerName;
 
+        // Update current player color
+        this.updateCurrentPlayerColor();
+
         // Update game phase display
         this.updateGamePhaseDisplay();
 
@@ -550,7 +591,20 @@ class TicTacToeMultiplayer {
     resetToLoginScreen() {
         this.loginModal.style.display = 'block';
         this.gameContainer.style.display = 'none';
+        this.registrationModal.style.display = 'none';
+        this.settingsModal.style.display = 'none';
         this.showLoginStatus('', '');
+    }
+
+    // Settings modal methods
+    showSettings() {
+        this.settingsModal.style.display = 'block';
+        // Update color picker access when opening settings
+        this.updateColorPickerAccess();
+    }
+
+    hideSettings() {
+        this.settingsModal.style.display = 'none';
     }
 
     showLoginStatus(message, type) {
@@ -581,6 +635,173 @@ class TicTacToeMultiplayer {
                 tempMessage.parentNode.removeChild(tempMessage);
             }
         }, 3000);
+    }
+
+    // Color customization methods
+    initializeColorCustomization() {
+        // Load saved colors from localStorage
+        const savedXColor = localStorage.getItem('ticTacToe_xColor') || '#e74c3c';
+        const savedOColor = localStorage.getItem('ticTacToe_oColor') || '#3498db';
+
+        // Set initial values
+        this.xColorPicker.value = savedXColor;
+        this.oColorPicker.value = savedOColor;
+
+        // Update preview colors
+        this.updateColorPreview('X', savedXColor);
+        this.updateColorPreview('O', savedOColor);
+
+        // Apply colors to the game board
+        this.applyColorsToBoard();
+
+        // Add event listeners with player restriction
+        this.xColorPicker.addEventListener('input', (e) => {
+            if (this.canChangeColor('X')) {
+                const color = e.target.value;
+                this.applyColorChange('X', color, true); // true = emit to server
+            } else {
+                // Reset to previous value if not allowed
+                e.target.value = this.xColorPicker.value;
+                this.showGameMessage("You can only change your own piece color!", 'error');
+            }
+        });
+
+        this.oColorPicker.addEventListener('input', (e) => {
+            if (this.canChangeColor('O')) {
+                const color = e.target.value;
+                this.applyColorChange('O', color, true); // true = emit to server
+            } else {
+                // Reset to previous value if not allowed
+                e.target.value = this.oColorPicker.value;
+                this.showGameMessage("You can only change your own piece color!", 'error');
+            }
+        });
+
+        // Initial UI state update
+        this.updateColorPickerAccess();
+    }
+
+    canChangeColor(piece) {
+        // Allow color changes if not logged in (local play)
+        if (!this.currentUser) {
+            return true;
+        }
+
+        // Allow only if the piece belongs to the current player
+        return this.currentUser.symbol === piece;
+    }
+
+    updateColorPickerAccess() {
+        if (!this.currentUser) {
+            // Local play - enable both
+            this.xColorPicker.disabled = false;
+            this.oColorPicker.disabled = false;
+            this.xColorPicker.style.opacity = '1';
+            this.oColorPicker.style.opacity = '1';
+            this.xColorLabel.textContent = 'Player X Color:';
+            this.oColorLabel.textContent = 'Player O Color:';
+            return;
+        }
+
+        // Get player names for labels
+        const xPlayerName = this.gameState.players.find(p => p.symbol === 'X')?.username || 'Player X';
+        const oPlayerName = this.gameState.players.find(p => p.symbol === 'O')?.username || 'Player O';
+
+        // Multiplayer - disable opponent's color picker
+        if (this.currentUser.symbol === 'X') {
+            this.xColorPicker.disabled = false;
+            this.oColorPicker.disabled = true;
+            this.xColorPicker.style.opacity = '1';
+            this.oColorPicker.style.opacity = '0.5';
+            this.xColorLabel.textContent = `Your Color (${xPlayerName}):`;
+            this.oColorLabel.textContent = `${oPlayerName}'s Color:`;
+        } else {
+            this.xColorPicker.disabled = true;
+            this.oColorPicker.disabled = false;
+            this.xColorPicker.style.opacity = '0.5';
+            this.oColorPicker.style.opacity = '1';
+            this.xColorLabel.textContent = `${xPlayerName}'s Color:`;
+            this.oColorLabel.textContent = `Your Color (${oPlayerName}):`;
+        }
+    }
+
+    updateColorPreview(piece, color) {
+        if (piece === 'X') {
+            this.xColorPreview.style.color = color;
+        } else {
+            this.oColorPreview.style.color = color;
+        }
+    }
+
+    applyColorsToBoard() {
+        const xColor = this.xColorPicker.value;
+        const oColor = this.oColorPicker.value;
+
+        // Create/update custom CSS styles
+        let styleSheet = document.getElementById('customPieceColors');
+        if (!styleSheet) {
+            styleSheet = document.createElement('style');
+            styleSheet.id = 'customPieceColors';
+            document.head.appendChild(styleSheet);
+        }
+
+        styleSheet.innerHTML = `
+            .cell.x {
+                color: ${xColor} !important;
+            }
+            .cell.o {
+                color: ${oColor} !important;
+            }
+        `;
+
+        // Update current player color
+        this.updateCurrentPlayerColor();
+    }
+
+    updateCurrentPlayerColor() {
+        if (this.playerDisplay && this.xColorPicker && this.oColorPicker) {
+            const xColor = this.xColorPicker.value;
+            const oColor = this.oColorPicker.value;
+            const currentColor = this.gameState.currentPlayer === 'X' ? xColor : oColor;
+            this.playerDisplay.style.color = currentColor;
+        }
+    }
+
+    // Unified color change method
+    applyColorChange(piece, color, emitToServer = false) {
+        // Update color picker
+        if (piece === 'X') {
+            this.xColorPicker.value = color;
+        } else {
+            this.oColorPicker.value = color;
+        }
+
+        // Update preview
+        this.updateColorPreview(piece, color);
+
+        // Apply to board
+        this.applyColorsToBoard();
+
+        // Save locally for persistence
+        localStorage.setItem(`ticTacToe_${piece.toLowerCase()}Color`, color);
+
+        // Emit to server if this is a local change
+        if (emitToServer && this.socket) {
+            this.socket.emit('changeColor', {
+                piece: piece,
+                color: color
+            });
+        }
+    }
+
+    // Sync colors from server state
+    syncColorsFromServer(pieceColors) {
+        if (pieceColors.X) {
+            this.applyColorChange('X', pieceColors.X, false);
+        }
+        if (pieceColors.O) {
+            this.applyColorChange('O', pieceColors.O, false);
+        }
     }
 }
 

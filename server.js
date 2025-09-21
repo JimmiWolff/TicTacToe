@@ -133,7 +133,12 @@ const gameState = {
     piecesPlaced: { X: 0, O: 0 },
     gamePhase: 'placement', // 'placement' or 'movement'
     selectedPiece: null,
-    maxPieces: 3
+    maxPieces: 3,
+    // Piece colors for synchronization
+    pieceColors: {
+        X: '#e74c3c',
+        O: '#3498db'
+    }
 };
 
 // Auth0 Configuration
@@ -293,7 +298,8 @@ io.on('connection', (socket) => {
             scores: gameState.scores,
             piecesPlaced: gameState.piecesPlaced,
             gamePhase: gameState.gamePhase,
-            maxPieces: gameState.maxPieces
+            maxPieces: gameState.maxPieces,
+            pieceColors: gameState.pieceColors
         });
 
         console.log(`${actualUsername} logged in as ${player.symbol}`);
@@ -425,7 +431,8 @@ io.on('connection', (socket) => {
             scores: gameState.scores,
             piecesPlaced: gameState.piecesPlaced,
             gamePhase: gameState.gamePhase,
-            maxPieces: gameState.maxPieces
+            maxPieces: gameState.maxPieces,
+            pieceColors: gameState.pieceColors
         });
     });
 
@@ -442,8 +449,42 @@ io.on('connection', (socket) => {
             scores: gameState.scores,
             piecesPlaced: gameState.piecesPlaced,
             gamePhase: gameState.gamePhase,
-            maxPieces: gameState.maxPieces
+            maxPieces: gameState.maxPieces,
+            pieceColors: gameState.pieceColors
         });
+    });
+
+    // Handle piece color changes
+    socket.on('changeColor', (data) => {
+        const { piece, color } = data;
+
+        if (!socket.player) {
+            socket.emit('error', { message: 'You must be logged in to change colors.' });
+            return;
+        }
+
+        // Check if player can change this piece's color
+        if (socket.player.symbol !== piece) {
+            socket.emit('error', { message: 'You can only change your own piece color.' });
+            return;
+        }
+
+        // Validate color format (basic hex color validation)
+        if (!/^#[0-9A-F]{6}$/i.test(color)) {
+            socket.emit('error', { message: 'Invalid color format.' });
+            return;
+        }
+
+        // Update server-side color
+        gameState.pieceColors[piece] = color;
+
+        // Broadcast color change to all players
+        io.emit('colorChanged', {
+            piece: piece,
+            color: color
+        });
+
+        console.log(`${socket.player.username} changed ${piece} color to ${color}`);
     });
 
     // Handle disconnect

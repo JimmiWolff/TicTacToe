@@ -81,6 +81,34 @@
         </div>
     </div>
 
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>⚙️ Game Settings</h2>
+                <button id="closeSettingsBtn" class="close-btn">&times;</button>
+            </div>
+
+            <div class="settings-content">
+                <div class="settings-section">
+                    <h3>🎨 Customize Piece Colors</h3>
+                    <div class="color-pickers">
+                        <div class="color-picker-group">
+                            <label for="xColorPicker" id="xColorLabel">Player X Color:</label>
+                            <input type="color" id="xColorPicker" value="#e74c3c">
+                            <span class="color-preview" id="xColorPreview">X</span>
+                        </div>
+                        <div class="color-picker-group">
+                            <label for="oColorPicker" id="oColorLabel">Player O Color:</label>
+                            <input type="color" id="oColorPicker" value="#3498db">
+                            <span class="color-preview" id="oColorPreview">O</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="container" id="gameContainer" style="display: none;">
         <div class="header">
             <h1>Tic Tac Toe</h1>
@@ -89,7 +117,10 @@
                     <div class="user-slot" id="player1Slot">Player 1: <span id="player1Name">Waiting...</span></div>
                     <div class="user-slot" id="player2Slot">Player 2: <span id="player2Name">Waiting...</span></div>
                 </div>
-                <button id="logoutBtn">Logout</button>
+                <div class="header-buttons">
+                    <button id="settingsBtn" class="settings-btn" title="Settings">⚙️</button>
+                    <button id="logoutBtn">Logout</button>
+                </div>
             </div>
         </div>
 
@@ -103,6 +134,7 @@
                 Human vs Computer
             </label>
         </div>
+
 
         <div class="game-info">
             <div class="current-player">Current Player: <span id="player">X</span></div>

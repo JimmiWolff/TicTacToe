@@ -29,7 +29,6 @@ class TicTacToeMultiplayer {
     initializeElements() {
         // Login elements
         this.loginModal = document.getElementById('loginModal');
-        this.legacyLoginForm = document.getElementById('legacyLoginForm');
         this.loginStatus = document.getElementById('loginStatus');
         this.gameContainer = document.getElementById('gameContainer');
         this.logoutBtn = document.getElementById('logoutBtn');
@@ -72,7 +71,6 @@ class TicTacToeMultiplayer {
                 throw new Error('Auth0 SDK not loaded. createAuth0Client is undefined.');
             }
 
-            console.log('Initializing Auth0...');
 
             // Get Auth0 configuration from server
             const response = await fetch('/auth/config');
@@ -81,7 +79,6 @@ class TicTacToeMultiplayer {
             }
 
             const config = await response.json();
-            console.log('Auth0 config loaded:', config);
 
             this.auth0 = await createAuth0Client({
                 domain: config.domain,
@@ -92,18 +89,15 @@ class TicTacToeMultiplayer {
                 }
             });
 
-            console.log('Auth0 client created successfully');
 
             // Check if user is authenticated (returning from Auth0)
             const isAuthenticated = await this.auth0.isAuthenticated();
             if (isAuthenticated) {
-                console.log('User is already authenticated');
                 await this.handleAuth0Login();
             }
 
             // Handle Auth0 callback
             if (window.location.search.includes('code=')) {
-                console.log('Handling Auth0 callback...');
                 await this.auth0.handleRedirectCallback();
                 await this.handleAuth0Login();
                 // Clean up URL
@@ -112,7 +106,7 @@ class TicTacToeMultiplayer {
         } catch (error) {
             console.error('Auth0 initialization error:', error);
             console.error('Error details:', error.message);
-            this.showLoginStatus('Auth0 setup required. Using legacy login only.', 'info');
+            this.showLoginStatus('Auth0 setup required.', 'error');
         }
     }
 
@@ -174,18 +168,15 @@ class TicTacToeMultiplayer {
 
         // Connection status
         this.socket.on('connect', () => {
-            console.log('Connected to server');
         });
 
         this.socket.on('disconnect', () => {
-            console.log('Disconnected from server');
             this.showLoginStatus('Connection lost. Please refresh the page.', 'error');
         });
     }
 
     addEventListeners() {
         // Legacy login form
-        this.legacyLoginForm.addEventListener('submit', (e) => this.handleLegacyLogin(e));
 
         // Auth0 login
         this.auth0LoginBtn.addEventListener('click', () => this.handleAuth0LoginClick());
@@ -214,19 +205,6 @@ class TicTacToeMultiplayer {
         });
     }
 
-    handleLegacyLogin(e) {
-        e.preventDefault();
-        const username = document.getElementById('username').value.trim();
-        const password = document.getElementById('password').value;
-
-        if (!username || !password) {
-            this.showLoginStatus('Please enter both username and password.', 'error');
-            return;
-        }
-
-        this.socket.emit('login', { username, password });
-        this.legacyLoginForm.reset();
-    }
 
     async handleLogout() {
         this.socket.disconnect();
@@ -252,7 +230,7 @@ class TicTacToeMultiplayer {
 
     async handleAuth0LoginClick() {
         if (!this.auth0) {
-            this.showLoginStatus('Auth0 not configured. Please use legacy login.', 'error');
+            this.showLoginStatus('Auth0 not configured.', 'error');
             return;
         }
 
@@ -608,5 +586,5 @@ class TicTacToeMultiplayer {
 
 // Initialize the game when the page loads
 document.addEventListener('DOMContentLoaded', () => {
-    new TicTacToeMultiplayer();
+    window.game = new TicTacToeMultiplayer();
 });

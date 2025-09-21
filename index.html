@@ -5,13 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tic Tac Toe</title>
     <link rel="stylesheet" href="style.css">
-    <!-- Auth0 SPA SDK -->
-    <script src="https://cdn.auth0.com/js/auth0-spa-js/2.0/auth0-spa-js.production.js"></script>
+    <!-- Auth0 SPA SDK - Local copy -->
+    <script src="auth0-spa-js.js"></script>
     <script>
-        // Debug: Check if Auth0 SDK loaded
+        // Fix Auth0 UMD module loading - make createAuth0Client globally available
+        document.addEventListener('DOMContentLoaded', function() {
+            if (window.auth0 && window.auth0.createAuth0Client) {
+                window.createAuth0Client = window.auth0.createAuth0Client;
+            }
+        });
+
         window.addEventListener('load', function() {
-            console.log('Auth0 SDK loaded:', typeof createAuth0Client !== 'undefined');
-            console.log('createAuth0Client function:', createAuth0Client);
+            if (typeof createAuth0Client === 'undefined' && window.auth0 && window.auth0.createAuth0Client) {
+                window.createAuth0Client = window.auth0.createAuth0Client;
+
+                // Reinitialize the game if needed
+                if (window.game && window.game.initializeAuth0) {
+                    window.game.initializeAuth0();
+                }
+            }
         });
     </script>
 </head>
@@ -24,24 +36,8 @@
 
             <!-- Login Method Selection -->
             <div class="login-methods">
-                <button id="auth0LoginBtn" class="auth-button primary">Login with Auth0</button>
+                <button id="auth0LoginBtn" class="auth-button primary">Login</button>
                 <button id="registerBtn" class="auth-button secondary">Create New Account</button>
-
-                <div class="divider">
-                    <span>or use legacy login</span>
-                </div>
-
-                <form id="legacyLoginForm" class="legacy-form">
-                    <div class="form-group">
-                        <label for="username">Username:</label>
-                        <input type="text" id="username" name="username" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="password">Password:</label>
-                        <input type="password" id="password" name="password" required>
-                    </div>
-                    <button type="submit">Login (Legacy)</button>
-                </form>
             </div>
         </div>
     </div>

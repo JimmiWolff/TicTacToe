@@ -142,18 +142,6 @@ const AUTH0_CLIENT_ID = process.env.AUTH0_CLIENT_ID;
 const AUTH0_CLIENT_SECRET = process.env.AUTH0_CLIENT_SECRET;
 const AUTH0_AUDIENCE = process.env.AUTH0_AUDIENCE;
 
-// Legacy users for backward compatibility (will be phased out)
-const legacyUsers = {
-    'player1': 'password1',
-    'player2': 'password2',
-    'alice': 'alice123',
-    'bob': 'bob456',
-    'admin': 'admin789',
-    'Jimmi': 'Jimmi1311',
-    'Donna': 'Donna1980',
-    'Villads': 'Villads2210',
-    'Freja': 'Freja0304'
-};
 
 // In-memory user storage (in production, use a proper database)
 const registeredUsers = new Map();
@@ -248,37 +236,16 @@ io.on('connection', (socket) => {
                 });
                 return;
             }
-        }
-        // Fallback to legacy login
-        else if (username && password) {
-            // Find username case-insensitively in legacy users
-            actualUsername = Object.keys(legacyUsers).find(
-                user => user.toLowerCase() === username.toLowerCase()
-            );
-
-            // Validate legacy credentials
-            if (!actualUsername || legacyUsers[actualUsername] !== password) {
-                socket.emit('loginResponse', {
-                    success: false,
-                    message: 'Invalid username or password.'
-                });
-                return;
-            }
-
-            userInfo = {
-                username: actualUsername,
-                authType: 'legacy'
-            };
         } else {
             socket.emit('loginResponse', {
                 success: false,
-                message: 'Please provide either username/password or authentication token.'
+                message: 'Please provide authentication token.'
             });
             return;
         }
 
         // Check if user is already logged in (case-insensitive)
-        const existingPlayer = gameState.players.find(p => p.username.toLowerCase() === actualUsername.toLowerCase());
+        const existingPlayer = actualUsername ? gameState.players.find(p => p.username.toLowerCase() === actualUsername.toLowerCase()) : null;
         if (existingPlayer) {
             socket.emit('loginResponse', {
                 success: false,
@@ -551,9 +518,5 @@ server.listen(PORT, HOST, () => {
     console.log(`🚀 Server running on ${process.env.WEBSITE_HOSTNAME ? 'https://' + process.env.WEBSITE_HOSTNAME : `http://localhost:${PORT}`}`);
     console.log(`📊 Health check: /health`);
     console.log(`🎮 Game ready for ${gameState.maxPlayers} players`);
-    console.log('👥 Available users:');
-    Object.keys(legacyUsers).forEach(username => {
-        console.log(`   ${username} : ${legacyUsers[username]}`);
-    });
     console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
 });

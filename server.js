@@ -4,6 +4,8 @@ const socketIo = require('socket.io');
 const cors = require('cors');
 const path = require('path');
 const jwt = require('jsonwebtoken');
+const { connectToDatabase } = require('./database');
+const highscoreService = require('./highscore');
 require('dotenv').config();
 
 const app = express();
@@ -161,6 +163,28 @@ function resetGame() {
     gameState.selectedPiece = null;
 }
 
+async function updateHighscoresAfterGame(winner) {
+    try {
+        // Update scores for both players
+        for (const player of gameState.players) {
+            if (player.userId) {
+                let gameResult;
+                if (winner === null) {
+                    gameResult = 'draw';
+                } else if (player.symbol === winner) {
+                    gameResult = 'win';
+                } else {
+                    gameResult = 'loss';
+                }
+
+                await highscoreService.updatePlayerScore(player.userId, player.username, gameResult);
+            }
+        }
+    } catch (error) {
+        console.error('Error updating highscores:', error);
+    }
+}
+
 function checkWin(board) {
     const winPatterns = [
         [0, 1, 2], [3, 4, 5], [6, 7, 8],
@@ -211,6 +235,9 @@ function switchToMovementPhase() {
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
+
+// Initialize database connection
+connectToDatabase().catch(console.error);
 
 // Socket.IO connection handling
 io.on('connection', (socket) => {
@@ -381,6 +408,9 @@ io.on('connection', (socket) => {
                 gameState.gameActive = false;
                 gameState.scores[winResult.winner]++;
 
+                // Update highscores
+                updateHighscoresAfterGame(winResult.winner);
+
                 io.emit('gameOver', {
                     winner: winResult.winner,
                     winnerName: gameState.players.find(p => p.symbol === winResult.winner)?.username,
@@ -393,6 +423,9 @@ io.on('connection', (socket) => {
                 // Only check for draw in placement phase
                 gameState.gameActive = false;
                 gameState.scores.draw++;
+
+                // Update highscores for draw
+                updateHighscoresAfterGame(null);
 
                 io.emit('gameOver', {
                     winner: null,
@@ -566,6 +599,34 @@ io.on('connection', (socket) => {
         });
 
         console.log(`${oldUsername} changed username to ${trimmedUsername}`);
+    });
+
+    // Handle highscore requests
+    socket.on('getHighscores', async () => {
+        try {
+            const topPlayers = await highscoreService.getTopPlayers(10);
+            socket.emit('highscoresUpdate', { topPlayers });
+        } catch (error) {
+            console.error('Error fetching highscores:', error);
+            socket.emit('error', { message: 'Failed to fetch highscores' });
+        }
+    });
+
+    socket.on('getPlayerStats', async (data) => {
+        const { userId } = data;
+
+        if (!userId) {
+            socket.emit('error', { message: 'User ID required' });
+            return;
+        }
+
+        try {
+            const stats = await highscoreService.getPlayerStats(userId);
+            socket.emit('playerStatsUpdate', { stats });
+        } catch (error) {
+            console.error('Error fetching player stats:', error);
+            socket.emit('error', { message: 'Failed to fetch player stats' });
+        }
     });
 
     // Handle disconnect

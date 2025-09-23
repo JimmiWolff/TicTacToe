@@ -88,6 +88,15 @@ class TicTacToeMultiplayer {
         this.newUsernameInput = document.getElementById('newUsernameInput');
         this.usernameChangeStatus = document.getElementById('usernameChangeStatus');
 
+        // Highscores modal elements
+        this.highscoresBtn = document.getElementById('highscoresBtn');
+        this.highscoresModal = document.getElementById('highscoresModal');
+        this.closeHighscoresBtn = document.getElementById('closeHighscoresBtn');
+        this.topPlayersList = document.getElementById('topPlayersList');
+        this.playerStatsDisplay = document.getElementById('playerStatsDisplay');
+        this.highscoresLoading = document.getElementById('highscoresLoading');
+        this.statsLoading = document.getElementById('statsLoading');
+
         // Initialize color customization
         this.initializeColorCustomization();
     }
@@ -243,6 +252,15 @@ class TicTacToeMultiplayer {
         this.socket.on('disconnect', () => {
             this.showLoginStatus('Connection lost. Please refresh the page.', 'error');
         });
+
+        // Highscore listeners
+        this.socket.on('highscoresUpdate', (data) => {
+            this.updateHighscoresDisplay(data.topPlayers);
+        });
+
+        this.socket.on('playerStatsUpdate', (data) => {
+            this.updatePlayerStatsDisplay(data.stats);
+        });
     }
 
     addEventListeners() {
@@ -254,6 +272,17 @@ class TicTacToeMultiplayer {
         this.settingsModal.addEventListener('click', (e) => {
             if (e.target === this.settingsModal) {
                 this.hideSettings();
+            }
+        });
+
+        // Highscores modal
+        this.highscoresBtn.addEventListener('click', () => this.showHighscores());
+        this.closeHighscoresBtn.addEventListener('click', () => this.hideHighscores());
+
+        // Close highscores modal when clicking outside
+        this.highscoresModal.addEventListener('click', (e) => {
+            if (e.target === this.highscoresModal) {
+                this.hideHighscores();
             }
         });
 
@@ -1035,6 +1064,106 @@ class TicTacToeMultiplayer {
         if (pieceColors.O) {
             this.applyColorChange('O', pieceColors.O, false);
         }
+    }
+
+    // Highscore methods
+    showHighscores() {
+        this.highscoresModal.style.display = 'block';
+        this.loadHighscores();
+    }
+
+    hideHighscores() {
+        this.highscoresModal.style.display = 'none';
+    }
+
+    loadHighscores() {
+        // Show loading indicators
+        this.highscoresLoading.style.display = 'flex';
+        this.statsLoading.style.display = 'flex';
+        this.topPlayersList.style.display = 'none';
+        this.playerStatsDisplay.style.display = 'none';
+
+        // Request highscores from server
+        this.socket.emit('getHighscores');
+
+        // Request player stats if user is logged in
+        if (this.currentUser && this.currentUser.userId) {
+            this.socket.emit('getPlayerStats', { userId: this.currentUser.userId });
+        }
+    }
+
+    updateHighscoresDisplay(topPlayers) {
+        this.highscoresLoading.style.display = 'none';
+        this.topPlayersList.style.display = 'block';
+
+        if (!topPlayers || topPlayers.length === 0) {
+            this.topPlayersList.innerHTML = '<p class="no-data">No games played yet. Be the first!</p>';
+            return;
+        }
+
+        const html = topPlayers.map((player, index) => {
+            const rank = index + 1;
+            const trophy = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `${rank}.`;
+
+            return `
+                <div class="highscore-item ${rank <= 3 ? 'top-three' : ''}">
+                    <div class="rank">${trophy}</div>
+                    <div class="player-info">
+                        <div class="player-name">${this.escapeHtml(player.username)}</div>
+                        <div class="player-stats">
+                            <span class="wins">${player.wins} wins</span>
+                            <span class="total-games">${player.totalGames} games</span>
+                            <span class="win-rate">${player.winRate}% win rate</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        this.topPlayersList.innerHTML = html;
+    }
+
+    updatePlayerStatsDisplay(stats) {
+        this.statsLoading.style.display = 'none';
+        this.playerStatsDisplay.style.display = 'block';
+
+        if (!stats) {
+            this.playerStatsDisplay.innerHTML = '<p class="no-data">No stats available</p>';
+            return;
+        }
+
+        const html = `
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-value">${stats.wins}</div>
+                    <div class="stat-label">Wins</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">${stats.losses}</div>
+                    <div class="stat-label">Losses</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">${stats.draws}</div>
+                    <div class="stat-label">Draws</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">${stats.totalGames}</div>
+                    <div class="stat-label">Total Games</div>
+                </div>
+                <div class="stat-item featured">
+                    <div class="stat-value">${stats.winRate}%</div>
+                    <div class="stat-label">Win Rate</div>
+                </div>
+            </div>
+        `;
+
+        this.playerStatsDisplay.innerHTML = html;
+    }
+
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 }
 

@@ -106,6 +106,61 @@
         </div>
     </div>
 
+    <!-- Highscores Modal -->
+    <div id="highscoresModal" class="modal highscores-modal" style="display: none;">
+        <div class="modal-content highscores-modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">
+                    <span class="trophy-icon">🏆</span>
+                    <span class="title-text">Leaderboard</span>
+                </h2>
+                <button id="closeHighscoresBtn" class="close-btn">&times;</button>
+            </div>
+
+            <div class="highscores-content">
+                <!-- Top Players Section -->
+                <div class="highscores-section top-players-section">
+                    <div class="section-header">
+                        <h3 class="section-title">
+                            <span class="section-icon">👑</span>
+                            Champions Hall
+                        </h3>
+                        <div class="section-subtitle">Top performing players</div>
+                    </div>
+
+                    <div class="loading-container" id="highscoresLoading">
+                        <div class="loading-spinner"></div>
+                        <div class="loading-text">Loading champions...</div>
+                    </div>
+
+                    <div class="highscores-list" id="topPlayersList" style="display: none;">
+                        <!-- Top players will be populated here -->
+                    </div>
+                </div>
+
+                <!-- Personal Stats Section -->
+                <div class="highscores-section personal-stats-section">
+                    <div class="section-header">
+                        <h3 class="section-title">
+                            <span class="section-icon">📈</span>
+                            Your Performance
+                        </h3>
+                        <div class="section-subtitle">Personal game statistics</div>
+                    </div>
+
+                    <div class="loading-container" id="statsLoading">
+                        <div class="loading-spinner"></div>
+                        <div class="loading-text">Loading your stats...</div>
+                    </div>
+
+                    <div class="player-stats-container" id="playerStatsDisplay" style="display: none;">
+                        <!-- Player stats will be populated here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Settings Modal -->
     <div id="settingsModal" class="modal" style="display: none;">
         <div class="modal-content">
@@ -173,6 +228,7 @@
                     </div>
                 </div>
                 <div class="header-buttons">
+                    <button id="highscoresBtn" class="highscores-btn" title="Highscores">🏆</button>
                     <button id="settingsBtn" class="settings-btn" title="Settings">⚙️</button>
                     <button id="logoutBtn">Logout</button>
                 </div>

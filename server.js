@@ -218,7 +218,7 @@ io.on('connection', (socket) => {
 
     // Handle login
     socket.on('login', (data) => {
-        const { username, password, token } = data;
+        const { username, password, token, customUsername } = data;
 
         let actualUsername = null;
         let userInfo = null;
@@ -227,12 +227,14 @@ io.on('connection', (socket) => {
         if (token) {
             const decoded = verifyToken(token);
             if (decoded) {
-                actualUsername = decoded.nickname || decoded.name || decoded.email;
+                // Use custom username if provided, otherwise fall back to Auth0 profile
+                actualUsername = customUsername || decoded.nickname || decoded.name || decoded.email;
                 userInfo = {
                     id: decoded.sub,
                     email: decoded.email,
                     username: actualUsername,
-                    authType: 'auth0'
+                    authType: 'auth0',
+                    customUsername: customUsername ? true : false
                 };
             } else {
                 socket.emit('loginResponse', {
@@ -485,6 +487,85 @@ io.on('connection', (socket) => {
         });
 
         console.log(`${socket.player.username} changed ${piece} color to ${color}`);
+    });
+
+    // Handle username changes
+    socket.on('changeUsername', (data) => {
+        const { newUsername } = data;
+
+        if (!socket.player) {
+            socket.emit('usernameChanged', {
+                success: false,
+                message: 'You must be logged in to change your username.'
+            });
+            return;
+        }
+
+        // Validate new username
+        if (!newUsername || typeof newUsername !== 'string') {
+            socket.emit('usernameChanged', {
+                success: false,
+                message: 'Invalid username provided.'
+            });
+            return;
+        }
+
+        const trimmedUsername = newUsername.trim();
+
+        if (trimmedUsername.length < 2 || trimmedUsername.length > 20) {
+            socket.emit('usernameChanged', {
+                success: false,
+                message: 'Username must be between 2 and 20 characters.'
+            });
+            return;
+        }
+
+        if (!/^[a-zA-Z0-9\s_-]+$/.test(trimmedUsername)) {
+            socket.emit('usernameChanged', {
+                success: false,
+                message: 'Username can only contain letters, numbers, spaces, hyphens, and underscores.'
+            });
+            return;
+        }
+
+        // Check if username is already taken (case-insensitive, excluding current user)
+        const existingPlayer = gameState.players.find(p =>
+            p.id !== socket.id && p.username.toLowerCase() === trimmedUsername.toLowerCase()
+        );
+
+        if (existingPlayer) {
+            socket.emit('usernameChanged', {
+                success: false,
+                message: 'This username is already taken by another player.'
+            });
+            return;
+        }
+
+        // Update the player's username
+        const oldUsername = socket.player.username;
+        socket.player.username = trimmedUsername;
+
+        // Send success response to the requesting player
+        socket.emit('usernameChanged', {
+            success: true,
+            newUsername: trimmedUsername,
+            message: 'Username updated successfully!'
+        });
+
+        // Broadcast updated game state to all players
+        io.emit('gameStateUpdate', {
+            players: gameState.players,
+            board: gameState.board,
+            currentPlayer: gameState.currentPlayer,
+            gameActive: gameState.gameActive,
+            scores: gameState.scores,
+            piecesPlaced: gameState.piecesPlaced,
+            gamePhase: gameState.gamePhase,
+            maxPieces: gameState.maxPieces,
+            pieceColors: gameState.pieceColors
+        });
+
+        console.log(`${oldUsername} changed username to ${trimmedUsername}`);
     });
 
     // Handle disconnect

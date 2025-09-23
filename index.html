@@ -42,6 +42,31 @@
         </div>
     </div>
 
+    <!-- Username Setup Modal -->
+    <div id="usernameModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h2>Choose Your Username</h2>
+            <div id="usernameStatus" class="login-status"></div>
+
+            <p class="username-info">
+                Choose a display name that other players will see during the game. This can be different from your account name.
+            </p>
+
+            <form id="usernameForm">
+                <div class="form-group">
+                    <label for="displayUsername">Display Name:</label>
+                    <input type="text" id="displayUsername" name="displayUsername" required
+                           placeholder="Enter your display name" maxlength="20">
+                    <small class="form-help">2-20 characters, letters and numbers only</small>
+                </div>
+                <div class="form-actions">
+                    <button type="submit">Continue to Game</button>
+                    <button type="button" id="backToAuth">Back to Login</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Registration Modal -->
     <div id="registrationModal" class="modal" style="display: none;">
         <div class="modal-content">
@@ -91,6 +116,20 @@
 
             <div class="settings-content">
                 <div class="settings-section">
+                    <h3>👤 Change Username</h3>
+                    <div id="usernameChangeStatus" class="login-status"></div>
+                    <form id="usernameChangeForm">
+                        <div class="form-group">
+                            <label for="newUsernameInput">New Display Name:</label>
+                            <input type="text" id="newUsernameInput" name="newUsername" required
+                                   placeholder="Enter new display name" maxlength="20">
+                            <small class="form-help">2-20 characters, letters and numbers only</small>
+                        </div>
+                        <button type="submit" class="username-change-btn">Update Username</button>
+                    </form>
+                </div>
+
+                <div class="settings-section">
                     <h3>🎨 Customize Piece Colors</h3>
                     <div class="color-pickers">
                         <div class="color-picker-group">
@@ -114,8 +153,24 @@
             <h1>Tic Tac Toe</h1>
             <div class="user-info">
                 <div class="logged-users">
-                    <div class="user-slot" id="player1Slot">Player 1: <span id="player1Name">Waiting...</span></div>
-                    <div class="user-slot" id="player2Slot">Player 2: <span id="player2Name">Waiting...</span></div>
+                    <div class="user-slot" id="player1Slot">
+                        <div class="player-info">
+                            <span class="player-symbol x-symbol">X</span>
+                            <div class="player-details">
+                                <span class="player-label">Player 1</span>
+                                <span class="player-name" id="player1Name">Waiting...</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="user-slot" id="player2Slot">
+                        <div class="player-info">
+                            <span class="player-symbol o-symbol">O</span>
+                            <div class="player-details">
+                                <span class="player-label">Player 2</span>
+                                <span class="player-name" id="player2Name">Waiting...</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="header-buttons">
                     <button id="settingsBtn" class="settings-btn" title="Settings">⚙️</button>

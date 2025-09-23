@@ -42,6 +42,13 @@ class TicTacToeMultiplayer {
         this.localRegistrationForm = document.getElementById('localRegistrationForm');
         this.backToLoginBtn = document.getElementById('backToLoginBtn');
 
+        // Username setup elements
+        this.usernameModal = document.getElementById('usernameModal');
+        this.usernameStatus = document.getElementById('usernameStatus');
+        this.usernameForm = document.getElementById('usernameForm');
+        this.displayUsernameInput = document.getElementById('displayUsername');
+        this.backToAuthBtn = document.getElementById('backToAuth');
+
         // Player info elements
         this.player1Slot = document.getElementById('player1Slot');
         this.player2Slot = document.getElementById('player2Slot');
@@ -75,6 +82,11 @@ class TicTacToeMultiplayer {
         this.oColorPreview = document.getElementById('oColorPreview');
         this.xColorLabel = document.getElementById('xColorLabel');
         this.oColorLabel = document.getElementById('oColorLabel');
+
+        // Username change elements
+        this.usernameChangeForm = document.getElementById('usernameChangeForm');
+        this.newUsernameInput = document.getElementById('newUsernameInput');
+        this.usernameChangeStatus = document.getElementById('usernameChangeStatus');
 
         // Initialize color customization
         this.initializeColorCustomization();
@@ -131,6 +143,13 @@ class TicTacToeMultiplayer {
         this.socket.on('loginResponse', (data) => {
             if (data.success) {
                 this.currentUser = data.player;
+
+                // If we have pending auth data, store the Auth0 userId for persistence
+                if (this.pendingAuth && this.pendingAuth.user && this.pendingAuth.user.sub) {
+                    this.currentUser.userId = this.pendingAuth.user.sub;
+                }
+
+                this.pendingAuth = null; // Clear pending auth data
                 this.showLoginStatus(data.message, 'success');
 
                 setTimeout(() => {
@@ -139,7 +158,7 @@ class TicTacToeMultiplayer {
                     this.updateColorPickerAccess();
                 }, 1000);
             } else {
-                this.showLoginStatus(data.message, 'error');
+                this.showUsernameStatus(data.message, 'error');
             }
         });
 
@@ -161,6 +180,28 @@ class TicTacToeMultiplayer {
         this.socket.on('colorChanged', (data) => {
             const { piece, color } = data;
             this.applyColorChange(piece, color, false); // false = don't emit to server
+        });
+
+        // Listen for username change responses
+        this.socket.on('usernameChanged', (data) => {
+            if (data.success) {
+                this.currentUser.username = data.newUsername;
+
+                // Save the updated username to localStorage
+                if (this.currentUser && this.currentUser.userId) {
+                    this.saveUsername(this.currentUser.userId, data.newUsername);
+                }
+
+                this.showUsernameChangeStatus('Username updated successfully!', 'success');
+                // Clear the input
+                this.newUsernameInput.value = '';
+                // Close settings after a short delay
+                setTimeout(() => {
+                    this.hideSettings();
+                }, 1500);
+            } else {
+                this.showUsernameChangeStatus(data.message, 'error');
+            }
         });
 
         // Game over
@@ -224,6 +265,13 @@ class TicTacToeMultiplayer {
         this.auth0RegisterBtn.addEventListener('click', () => this.handleAuth0RegisterClick());
         this.localRegistrationForm.addEventListener('submit', (e) => this.handleLocalRegistration(e));
         this.backToLoginBtn.addEventListener('click', () => this.showLoginModal());
+
+        // Username setup
+        this.usernameForm.addEventListener('submit', (e) => this.handleUsernameSubmit(e));
+        this.backToAuthBtn.addEventListener('click', () => this.showLoginModal());
+
+        // Username change in settings
+        this.usernameChangeForm.addEventListener('submit', (e) => this.handleUsernameChange(e));
 
         // Logout button
         this.logoutBtn.addEventListener('click', () => this.handleLogout());
@@ -311,7 +359,32 @@ class TicTacToeMultiplayer {
 
             if (user && token) {
                 this.isAuthenticated = true;
-                this.socket.emit('login', { token });
+
+                // Check for saved username in localStorage
+                const savedUsername = this.getSavedUsername(user.sub);
+
+                if (savedUsername) {
+                    // Store user info for later use
+                    this.pendingAuth = {
+                        user: user,
+                        token: token,
+                        authType: 'auth0'
+                    };
+
+                    // Use saved username and login directly
+                    this.socket.emit('login', {
+                        token: token,
+                        customUsername: savedUsername
+                    });
+                } else {
+                    // Store Auth0 user info temporarily and show username modal
+                    this.pendingAuth = {
+                        user: user,
+                        token: token,
+                        authType: 'auth0'
+                    };
+                    this.showUsernameModal();
+                }
             }
         } catch (error) {
             console.error('Auth0 token error:', error);
@@ -370,6 +443,134 @@ class TicTacToeMultiplayer {
     showRegistrationStatus(message, type) {
         this.registrationStatus.textContent = message;
         this.registrationStatus.className = `login-status ${type}`;
+    }
+
+    showUsernameModal() {
+        this.loginModal.style.display = 'none';
+        this.registrationModal.style.display = 'none';
+        this.usernameModal.style.display = 'block';
+
+        // Pre-populate with suggested username from Auth0
+        if (this.pendingAuth && this.pendingAuth.user) {
+            const suggestedUsername = this.pendingAuth.user.nickname ||
+                                    this.pendingAuth.user.name ||
+                                    this.pendingAuth.user.email?.split('@')[0] ||
+                                    'Player';
+            this.displayUsernameInput.value = suggestedUsername;
+        }
+
+        this.showUsernameStatus('', '');
+        this.displayUsernameInput.focus();
+    }
+
+    showUsernameStatus(message, type) {
+        this.usernameStatus.textContent = message;
+        this.usernameStatus.className = `login-status ${type}`;
+    }
+
+    async handleUsernameSubmit(e) {
+        e.preventDefault();
+
+        const displayUsername = this.displayUsernameInput.value.trim();
+
+        if (!this.validateUsername(displayUsername)) {
+            return;
+        }
+
+        if (this.pendingAuth) {
+            // Save the username for future logins
+            this.saveUsername(this.pendingAuth.user.sub, displayUsername);
+
+            // Complete the login with the custom username
+            this.socket.emit('login', {
+                token: this.pendingAuth.token,
+                customUsername: displayUsername
+            });
+        }
+    }
+
+    validateUsername(username) {
+        if (!username) {
+            this.showUsernameStatus('Please enter a display name.', 'error');
+            return false;
+        }
+
+        if (username.length < 2) {
+            this.showUsernameStatus('Display name must be at least 2 characters.', 'error');
+            return false;
+        }
+
+        if (username.length > 20) {
+            this.showUsernameStatus('Display name must be 20 characters or less.', 'error');
+            return false;
+        }
+
+        if (!/^[a-zA-Z0-9\s_-]+$/.test(username)) {
+            this.showUsernameStatus('Display name can only contain letters, numbers, spaces, hyphens, and underscores.', 'error');
+            return false;
+        }
+
+        return true;
+    }
+
+    handleUsernameChange(e) {
+        e.preventDefault();
+
+        const newUsername = this.newUsernameInput.value.trim();
+
+        if (!this.validateUsernameForChange(newUsername)) {
+            return;
+        }
+
+        // Check if it's the same as current username
+        if (this.currentUser && newUsername === this.currentUser.username) {
+            this.showUsernameChangeStatus('This is already your current username.', 'error');
+            return;
+        }
+
+        // Send username change request to server
+        this.socket.emit('changeUsername', { newUsername: newUsername });
+        this.showUsernameChangeStatus('Updating username...', 'info');
+    }
+
+    validateUsernameForChange(username) {
+        if (!username) {
+            this.showUsernameChangeStatus('Please enter a new display name.', 'error');
+            return false;
+        }
+
+        if (username.length < 2) {
+            this.showUsernameChangeStatus('Display name must be at least 2 characters.', 'error');
+            return false;
+        }
+
+        if (username.length > 20) {
+            this.showUsernameChangeStatus('Display name must be 20 characters or less.', 'error');
+            return false;
+        }
+
+        if (!/^[a-zA-Z0-9\s_-]+$/.test(username)) {
+            this.showUsernameChangeStatus('Display name can only contain letters, numbers, spaces, hyphens, and underscores.', 'error');
+            return false;
+        }
+
+        return true;
+    }
+
+    showUsernameChangeStatus(message, type) {
+        this.usernameChangeStatus.textContent = message;
+        this.usernameChangeStatus.className = `login-status ${type}`;
+    }
+
+    // Username persistence methods
+    getSavedUsername(userId) {
+        if (!userId) return null;
+        return localStorage.getItem(`ticTacToe_username_${userId}`);
+    }
+
+    saveUsername(userId, username) {
+        if (!userId || !username) return;
+        localStorage.setItem(`ticTacToe_username_${userId}`, username);
     }
 
     handleCellClick(index) {
@@ -528,6 +729,28 @@ class TicTacToeMultiplayer {
             this.player2Name.textContent = 'Waiting...';
             this.player2Slot.classList.remove('active');
         }
+
+        // Update player symbols with current piece colors
+        this.updatePlayerSymbolColors();
+    }
+
+    updatePlayerSymbolColors() {
+        if (this.xColorPicker && this.oColorPicker) {
+            const xColor = this.xColorPicker.value;
+            const oColor = this.oColorPicker.value;
+
+            // Update X symbol color
+            const xSymbol = document.querySelector('.player-symbol.x-symbol');
+            if (xSymbol) {
+                xSymbol.style.color = xColor;
+            }
+
+            // Update O symbol color
+            const oSymbol = document.querySelector('.player-symbol.o-symbol');
+            if (oSymbol) {
+                oSymbol.style.color = oColor;
+            }
+        }
     }
 
     updateScoreDisplay() {
@@ -585,6 +808,8 @@ class TicTacToeMultiplayer {
 
     showGameInterface() {
         this.loginModal.style.display = 'none';
+        this.registrationModal.style.display = 'none';
+        this.usernameModal.style.display = 'none';
         this.gameContainer.style.display = 'block';
     }
 
@@ -592,6 +817,7 @@ class TicTacToeMultiplayer {
         this.loginModal.style.display = 'block';
         this.gameContainer.style.display = 'none';
         this.registrationModal.style.display = 'none';
+        this.usernameModal.style.display = 'none';
         this.settingsModal.style.display = 'none';
         this.showLoginStatus('', '');
     }
@@ -601,6 +827,12 @@ class TicTacToeMultiplayer {
         this.settingsModal.style.display = 'block';
         // Update color picker access when opening settings
         this.updateColorPickerAccess();
+        // Pre-populate current username
+        if (this.currentUser) {
+            this.newUsernameInput.placeholder = `Current: ${this.currentUser.username}`;
+        }
+        // Clear any previous status
+        this.showUsernameChangeStatus('', '');
     }
 
     hideSettings() {
@@ -754,8 +986,9 @@ class TicTacToeMultiplayer {
             }
         `;
 
-        // Update current player color
+        // Update current player color and player symbols
         this.updateCurrentPlayerColor();
+        this.updatePlayerSymbolColors();
     }
 
     updateCurrentPlayerColor() {

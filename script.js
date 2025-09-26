@@ -4,6 +4,10 @@ class TicTacToeMultiplayer {
         this.currentUser = null;
         this.auth0 = null;
         this.isAuthenticated = false;
+        this.currentRoom = null;
+        this.roomCode = null;
+        this.storedAuthToken = null;
+        this.storedCustomUsername = null;
         this.gameState = {
             players: [],
             board: ['', '', '', '', '', '', '', '', ''],
@@ -48,6 +52,29 @@ class TicTacToeMultiplayer {
         this.usernameForm = document.getElementById('usernameForm');
         this.displayUsernameInput = document.getElementById('displayUsername');
         this.backToAuthBtn = document.getElementById('backToAuth');
+
+        // Room selection elements
+        this.roomModal = document.getElementById('roomModal');
+        this.roomStatus = document.getElementById('roomStatus');
+        this.joinRoomForm = document.getElementById('joinRoomForm');
+        this.roomCodeInput = document.getElementById('roomCodeInput');
+        this.createRoomBtn = document.getElementById('createRoomBtn');
+        this.quickPlayBtn = document.getElementById('quickPlayBtn');
+
+        // Debug: Check if room elements exist
+        console.log('Room elements found:', {
+            roomModal: !!this.roomModal,
+            roomStatus: !!this.roomStatus,
+            joinRoomForm: !!this.joinRoomForm,
+            roomCodeInput: !!this.roomCodeInput,
+            createRoomBtn: !!this.createRoomBtn,
+            quickPlayBtn: !!this.quickPlayBtn
+        });
+
+        // Room info display elements
+        this.roomInfo = document.getElementById('roomInfo');
+        this.roomCodeDisplay = document.getElementById('roomCodeDisplay');
+        this.shareRoomBtn = document.getElementById('shareRoomBtn');
 
         // Player info elements
         this.player1Slot = document.getElementById('player1Slot');
@@ -158,14 +185,26 @@ class TicTacToeMultiplayer {
                     this.currentUser.userId = this.pendingAuth.user.sub;
                 }
 
-                this.pendingAuth = null; // Clear pending auth data
-                this.showLoginStatus(data.message, 'success');
+                // If this is the initial authentication (no room selected yet)
+                if (!this.currentRoom) {
+                    // Store auth data and show room selection
+                    this.storedAuthToken = this.pendingAuth?.token;
+                    this.storedCustomUsername = this.pendingAuth?.customUsername;
+                    this.pendingAuth = null;
+                    this.showLoginStatus(data.message, 'success');
 
-                setTimeout(() => {
-                    this.showGameInterface();
-                    // Update color picker access after login
-                    this.updateColorPickerAccess();
-                }, 1000);
+                    setTimeout(() => {
+                        this.showRoomModal();
+                    }, 1000);
+                } else {
+                    // Room already selected, show game interface
+                    this.pendingAuth = null;
+                    this.showLoginStatus(data.message, 'success');
+                    setTimeout(() => {
+                        this.showGameInterface();
+                        this.updateColorPickerAccess();
+                    }, 1000);
+                }
             } else {
                 this.showUsernameStatus(data.message, 'error');
             }
@@ -261,6 +300,28 @@ class TicTacToeMultiplayer {
         this.socket.on('playerStatsUpdate', (data) => {
             this.updatePlayerStatsDisplay(data.stats);
         });
+
+        // Room management listeners
+        this.socket.on('roomJoined', (data) => {
+            if (data.success) {
+                this.currentRoom = data.roomCode;
+                this.roomCode = data.roomCode;
+                this.updateRoomDisplay(data.roomCode);
+                this.showRoomStatus(`Joined room ${data.roomCode}`, 'success');
+
+                // Now login to the game with the stored authentication
+                if (this.currentUser && this.storedAuthToken) {
+                    setTimeout(() => {
+                        this.socket.emit('login', {
+                            token: this.storedAuthToken,
+                            customUsername: this.storedCustomUsername
+                        });
+                    }, 500);
+                }
+            } else {
+                this.showRoomStatus(data.message, 'error');
+            }
+        });
     }
 
     addEventListeners() {
@@ -298,6 +359,22 @@ class TicTacToeMultiplayer {
         // Username setup
         this.usernameForm.addEventListener('submit', (e) => this.handleUsernameSubmit(e));
         this.backToAuthBtn.addEventListener('click', () => this.showLoginModal());
+
+        // Room selection
+        this.joinRoomForm.addEventListener('submit', (e) => this.handleJoinRoom(e));
+        this.createRoomBtn.addEventListener('click', () => {
+            console.log('Create room button event fired');
+            this.handleCreateRoom();
+        });
+        this.quickPlayBtn.addEventListener('click', () => this.handleQuickPlay());
+
+        // Room code input formatting
+        this.roomCodeInput.addEventListener('input', (e) => {
+            e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+        });
+
+        // Share room code
+        this.shareRoomBtn.addEventListener('click', () => this.shareRoomCode());
 
         // Username change in settings
         this.usernameChangeForm.addEventListener('submit', (e) => this.handleUsernameChange(e));
@@ -839,6 +916,7 @@ class TicTacToeMultiplayer {
         this.loginModal.style.display = 'none';
         this.registrationModal.style.display = 'none';
         this.usernameModal.style.display = 'none';
+        this.roomModal.style.display = 'none';
         this.gameContainer.style.display = 'block';
     }
 
@@ -847,8 +925,10 @@ class TicTacToeMultiplayer {
         this.gameContainer.style.display = 'none';
         this.registrationModal.style.display = 'none';
         this.usernameModal.style.display = 'none';
+        this.roomModal.style.display = 'none';
         this.settingsModal.style.display = 'none';
         this.showLoginStatus('', '');
+        this.showRoomStatus('', '');
     }
 
     // Settings modal methods
@@ -1063,6 +1143,113 @@ class TicTacToeMultiplayer {
         }
         if (pieceColors.O) {
             this.applyColorChange('O', pieceColors.O, false);
+        }
+    }
+
+    // Room management methods
+    handleJoinRoom(e) {
+        e.preventDefault();
+        const roomCode = this.roomCodeInput.value.trim();
+
+        if (roomCode.length !== 6) {
+            this.showRoomStatus('Please enter a 6-character room code', 'error');
+            return;
+        }
+
+        this.socket.emit('joinRoom', { roomCode: roomCode });
+        this.showRoomStatus('Joining room...', 'info');
+    }
+
+    async handleCreateRoom() {
+        console.log('Create room button clicked');
+        this.showRoomStatus('Creating new room...', 'info');
+
+        try {
+            console.log('Fetching /api/rooms/create');
+            const response = await fetch('/api/rooms/create', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            console.log('Response status:', response.status);
+            const data = await response.json();
+            console.log('Response data:', data);
+
+            if (data.success) {
+                console.log('Room created successfully:', data.roomCode);
+                this.socket.emit('joinRoom', { roomCode: data.roomCode });
+                this.showRoomStatus(`Created room ${data.roomCode}...`, 'info');
+            } else {
+                console.error('Room creation failed:', data);
+                this.showRoomStatus('Failed to create room', 'error');
+            }
+        } catch (error) {
+            console.error('Error creating room:', error);
+            this.showRoomStatus('Failed to create room', 'error');
+        }
+    }
+
+    handleQuickPlay() {
+        this.socket.emit('joinRoom', { roomCode: null }); // null means default room
+        this.showRoomStatus('Joining quick play...', 'info');
+    }
+
+    showRoomModal() {
+        this.roomModal.style.display = 'block';
+        this.loginModal.style.display = 'none';
+        this.usernameModal.style.display = 'none';
+        this.registrationModal.style.display = 'none';
+    }
+
+    showRoomStatus(message, type) {
+        this.roomStatus.textContent = message;
+        this.roomStatus.className = `login-status ${type}`;
+    }
+
+    updateRoomDisplay(roomCode) {
+        console.log('Updating room display with code:', roomCode);
+        console.log('Room info element exists:', !!this.roomInfo);
+
+        if (roomCode === 'default') {
+            console.log('Hiding room display for default room');
+            this.roomInfo.style.display = 'none';
+        } else {
+            console.log('Showing room code:', roomCode);
+            this.roomCodeDisplay.textContent = roomCode;
+            this.roomInfo.style.display = 'flex';
+        }
+    }
+
+    shareRoomCode() {
+        if (!this.roomCode || this.roomCode === 'default') {
+            return;
+        }
+
+        const shareText = `Join my Tic Tac Toe game! Room code: ${this.roomCode}`;
+
+        if (navigator.share) {
+            navigator.share({
+                title: 'Tic Tac Toe Game Invitation',
+                text: shareText,
+                url: window.location.origin
+            }).catch(console.error);
+        } else if (navigator.clipboard) {
+            navigator.clipboard.writeText(shareText).then(() => {
+                // Show temporary feedback
+                const originalText = this.shareRoomBtn.textContent;
+                this.shareRoomBtn.textContent = '✓';
+                setTimeout(() => {
+                    this.shareRoomBtn.textContent = originalText;
+                }, 1000);
+            }).catch(() => {
+                // Fallback: show room code in alert
+                alert(`Room Code: ${this.roomCode}\n\nShare this code with your friend to play together!`);
+            });
+        } else {
+            // Fallback: show room code in alert
+            alert(`Room Code: ${this.roomCode}\n\nShare this code with your friend to play together!`);
         }
     }
 

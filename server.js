@@ -115,33 +115,116 @@ app.get('/auth/profile', (req, res) => {
 
 // Health check endpoint for Azure
 app.get('/health', (req, res) => {
+    const totalPlayers = Array.from(rooms.values()).reduce((sum, room) => sum + room.players.length, 0);
     res.status(200).json({
         status: 'healthy',
         timestamp: new Date().toISOString(),
         uptime: process.uptime(),
-        players: gameState.players.length
+        totalPlayers: totalPlayers,
+        activeRooms: rooms.size
     });
 });
 
-// Game state
-const gameState = {
-    players: [],
-    maxPlayers: 2,
-    board: ['', '', '', '', '', '', '', '', ''],
-    currentPlayer: 'X',
-    gameActive: true,
-    scores: { X: 0, O: 0, draw: 0 },
-    // New properties for move pieces feature
-    piecesPlaced: { X: 0, O: 0 },
-    gamePhase: 'placement', // 'placement' or 'movement'
-    selectedPiece: null,
-    maxPieces: 3,
-    // Piece colors for synchronization
-    pieceColors: {
-        X: '#e74c3c',
-        O: '#3498db'
+// Room management endpoints
+app.post('/api/rooms/create', (req, res) => {
+    let roomCode;
+    do {
+        roomCode = generateRoomCode();
+    } while (rooms.has(roomCode));
+
+    const room = createGameRoom(roomCode);
+    rooms.set(roomCode, room);
+
+    res.json({
+        success: true,
+        roomCode: roomCode,
+        message: 'Room created successfully'
+    });
+});
+
+app.get('/api/rooms/:roomCode', (req, res) => {
+    const roomCode = req.params.roomCode.toUpperCase();
+    const room = rooms.get(roomCode);
+
+    if (!room) {
+        return res.status(404).json({
+            success: false,
+            message: 'Room not found'
+        });
     }
-};
+
+    res.json({
+        success: true,
+        room: {
+            id: room.id,
+            playerCount: room.players.length,
+            maxPlayers: room.maxPlayers,
+            gameActive: room.gameActive,
+            createdAt: room.createdAt
+        }
+    });
+});
+
+// Room management system
+const rooms = new Map();
+
+// Game room structure
+function createGameRoom(roomId) {
+    return {
+        id: roomId,
+        players: [],
+        maxPlayers: 2,
+        board: ['', '', '', '', '', '', '', '', ''],
+        currentPlayer: 'X',
+        gameActive: true,
+        scores: { X: 0, O: 0, draw: 0 },
+        // New properties for move pieces feature
+        piecesPlaced: { X: 0, O: 0 },
+        gamePhase: 'placement', // 'placement' or 'movement'
+        selectedPiece: null,
+        maxPieces: 3,
+        // Piece colors for synchronization
+        pieceColors: {
+            X: '#e74c3c',
+            O: '#3498db'
+        },
+        createdAt: new Date(),
+        lastActivity: new Date()
+    };
+}
+
+// Generate unique room code
+function generateRoomCode() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let code = '';
+    for (let i = 0; i < 6; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+}
+
+// Get or create room
+function getOrCreateRoom(roomId) {
+    if (!rooms.has(roomId)) {
+        rooms.set(roomId, createGameRoom(roomId));
+    }
+    return rooms.get(roomId);
+}
+
+// Clean up empty rooms (called periodically)
+function cleanupEmptyRooms() {
+    const now = new Date();
+    for (const [roomId, room] of rooms.entries()) {
+        if (room.players.length === 0 && now - room.lastActivity > 300000) { // 5 minutes
+            rooms.delete(roomId);
+            console.log(`Cleaned up empty room: ${roomId}`);
+        }
+    }
+}
+
+// Legacy support - default room for backward compatibility
+const DEFAULT_ROOM = 'default';
+getOrCreateRoom(DEFAULT_ROOM);
 
 // Auth0 Configuration
 const AUTH0_DOMAIN = process.env.AUTH0_DOMAIN;
@@ -154,19 +237,20 @@ const AUTH0_AUDIENCE = process.env.AUTH0_AUDIENCE;
 const registeredUsers = new Map();
 
 // Helper functions
-function resetGame() {
-    gameState.board = ['', '', '', '', '', '', '', '', ''];
-    gameState.currentPlayer = 'X';
-    gameState.gameActive = true;
-    gameState.piecesPlaced = { X: 0, O: 0 };
-    gameState.gamePhase = 'placement';
-    gameState.selectedPiece = null;
+function resetGame(room) {
+    room.board = ['', '', '', '', '', '', '', '', ''];
+    room.currentPlayer = 'X';
+    room.gameActive = true;
+    room.piecesPlaced = { X: 0, O: 0 };
+    room.gamePhase = 'placement';
+    room.selectedPiece = null;
+    room.lastActivity = new Date();
 }
 
-async function updateHighscoresAfterGame(winner) {
+async function updateHighscoresAfterGame(room, winner) {
     try {
         // Update scores for both players
-        for (const player of gameState.players) {
+        for (const player of room.players) {
             if (player.userId) {
                 let gameResult;
                 if (winner === null) {
@@ -206,14 +290,14 @@ function checkDraw(board) {
 }
 
 // New helper functions for move pieces feature
-function isValidMove(fromIndex, toIndex, player) {
+function isValidMove(fromIndex, toIndex, player, room) {
     // Check if fromIndex has the player's piece
-    if (gameState.board[fromIndex] !== player) {
+    if (room.board[fromIndex] !== player) {
         return false;
     }
 
     // Check if toIndex is empty
-    if (gameState.board[toIndex] !== '') {
+    if (room.board[toIndex] !== '') {
         return false;
     }
 
@@ -222,10 +306,10 @@ function isValidMove(fromIndex, toIndex, player) {
 }
 
 
-function switchToMovementPhase() {
-    if (gameState.piecesPlaced.X >= gameState.maxPieces &&
-        gameState.piecesPlaced.O >= gameState.maxPieces) {
-        gameState.gamePhase = 'movement';
+function switchToMovementPhase(room) {
+    if (room.piecesPlaced.X >= room.maxPieces &&
+        room.piecesPlaced.O >= room.maxPieces) {
+        room.gamePhase = 'movement';
         return true;
     }
     return false;
@@ -239,9 +323,39 @@ app.get('/', (req, res) => {
 // Initialize database connection
 connectToDatabase().catch(console.error);
 
+// Cleanup empty rooms every 5 minutes
+setInterval(cleanupEmptyRooms, 300000);
+
 // Socket.IO connection handling
 io.on('connection', (socket) => {
     console.log(`User connected: ${socket.id}`);
+
+    // Handle room joining
+    socket.on('joinRoom', (data) => {
+        const { roomCode } = data;
+        const normalizedRoomCode = roomCode ? roomCode.toUpperCase() : DEFAULT_ROOM;
+
+        // Leave current room if any
+        if (socket.currentRoom) {
+            socket.leave(socket.currentRoom);
+        }
+
+        // Join new room
+        socket.join(normalizedRoomCode);
+        socket.currentRoom = normalizedRoomCode;
+
+        // Get or create room
+        const room = getOrCreateRoom(normalizedRoomCode);
+        room.lastActivity = new Date();
+
+        socket.emit('roomJoined', {
+            success: true,
+            roomCode: normalizedRoomCode,
+            message: `Joined room ${normalizedRoomCode}`
+        });
+
+        console.log(`Socket ${socket.id} joined room ${normalizedRoomCode}`);
+    });
 
     // Handle login
     socket.on('login', (data) => {
@@ -278,57 +392,69 @@ io.on('connection', (socket) => {
             return;
         }
 
-        // Check if user is already logged in (case-insensitive)
-        const existingPlayer = actualUsername ? gameState.players.find(p => p.username.toLowerCase() === actualUsername.toLowerCase()) : null;
+        // Ensure user is in a room (default to DEFAULT_ROOM if not specified)
+        const roomCode = socket.currentRoom || DEFAULT_ROOM;
+        if (!socket.currentRoom) {
+            socket.join(DEFAULT_ROOM);
+            socket.currentRoom = DEFAULT_ROOM;
+        }
+
+        const room = getOrCreateRoom(roomCode);
+        room.lastActivity = new Date();
+
+        // Check if user is already logged in this room (case-insensitive)
+        const existingPlayer = actualUsername ? room.players.find(p => p.username.toLowerCase() === actualUsername.toLowerCase()) : null;
         if (existingPlayer) {
             socket.emit('loginResponse', {
                 success: false,
-                message: 'User is already logged in.'
+                message: 'User is already logged in this room.'
             });
             return;
         }
 
-        // Check if game is full
-        if (gameState.players.length >= gameState.maxPlayers) {
+        // Check if room is full
+        if (room.players.length >= room.maxPlayers) {
             socket.emit('loginResponse', {
                 success: false,
-                message: 'Maximum number of players (2) already logged in.'
+                message: 'This room is full (maximum 2 players).'
             });
             return;
         }
 
-        // Add player
+        // Add player to room
         const player = {
             id: socket.id,
             username: actualUsername,
-            symbol: gameState.players.length === 0 ? 'X' : 'O',
+            symbol: room.players.length === 0 ? 'X' : 'O',
             loginTime: new Date(),
             authType: userInfo.authType,
             email: userInfo.email || null,
             userId: userInfo.id || null
         };
 
-        gameState.players.push(player);
+        room.players.push(player);
         socket.player = player;
+        socket.playerRoom = roomCode;
 
         // Send success response
         socket.emit('loginResponse', {
             success: true,
-            message: `Welcome, ${actualUsername}!`,
-            player: player
+            message: `Welcome, ${actualUsername}! Room: ${roomCode}`,
+            player: player,
+            roomCode: roomCode
         });
 
-        // Broadcast updated game state to all clients
-        io.emit('gameStateUpdate', {
-            players: gameState.players,
-            board: gameState.board,
-            currentPlayer: gameState.currentPlayer,
-            gameActive: gameState.gameActive,
-            scores: gameState.scores,
-            piecesPlaced: gameState.piecesPlaced,
-            gamePhase: gameState.gamePhase,
-            maxPieces: gameState.maxPieces,
-            pieceColors: gameState.pieceColors
+        // Broadcast updated game state to all clients in the room
+        io.to(roomCode).emit('gameStateUpdate', {
+            players: room.players,
+            board: room.board,
+            currentPlayer: room.currentPlayer,
+            gameActive: room.gameActive,
+            scores: room.scores,
+            piecesPlaced: room.piecesPlaced,
+            gamePhase: room.gamePhase,
+            maxPieces: room.maxPieces,
+            pieceColors: room.pieceColors
         });
 
         console.log(`${actualUsername} logged in as ${player.symbol}`);
@@ -338,116 +464,124 @@ io.on('connection', (socket) => {
     socket.on('makeMove', (data) => {
         const { cellIndex, fromIndex } = data; // fromIndex is provided for movement phase
 
-        if (!socket.player) {
+        if (!socket.player || !socket.playerRoom) {
             socket.emit('error', { message: 'You must be logged in to play.' });
             return;
         }
 
+        const room = rooms.get(socket.playerRoom);
+        if (!room) {
+            socket.emit('error', { message: 'Room not found.' });
+            return;
+        }
+
         // Check if it's the player's turn
-        if (socket.player.symbol !== gameState.currentPlayer) {
+        if (socket.player.symbol !== room.currentPlayer) {
             socket.emit('error', { message: 'It\'s not your turn!' });
             return;
         }
 
         // Check if game is active
-        if (!gameState.gameActive) {
+        if (!room.gameActive) {
             return;
         }
 
         // Check if we have enough players
-        if (gameState.players.length < 2) {
+        if (room.players.length < 2) {
             socket.emit('error', { message: 'Waiting for another player.' });
             return;
         }
 
-        const currentSymbol = gameState.currentPlayer;
+        const currentSymbol = room.currentPlayer;
         let moveSuccessful = false;
 
-        if (gameState.gamePhase === 'placement') {
+        if (room.gamePhase === 'placement') {
             // PLACEMENT PHASE: Place a new piece
-            if (gameState.board[cellIndex] !== '') {
+            if (room.board[cellIndex] !== '') {
                 socket.emit('error', { message: 'Cell is already occupied!' });
                 return;
             }
 
-            if (gameState.piecesPlaced[currentSymbol] >= gameState.maxPieces) {
+            if (room.piecesPlaced[currentSymbol] >= room.maxPieces) {
                 socket.emit('error', { message: 'You have already placed all your pieces!' });
                 return;
             }
 
             // Place the piece
-            gameState.board[cellIndex] = currentSymbol;
-            gameState.piecesPlaced[currentSymbol]++;
+            room.board[cellIndex] = currentSymbol;
+            room.piecesPlaced[currentSymbol]++;
             moveSuccessful = true;
 
             // Check if we should switch to movement phase
-            switchToMovementPhase();
+            switchToMovementPhase(room);
 
-        } else if (gameState.gamePhase === 'movement') {
+        } else if (room.gamePhase === 'movement') {
             // MOVEMENT PHASE: Move an existing piece
             if (fromIndex === undefined || fromIndex === null) {
                 socket.emit('error', { message: 'You must select a piece to move!' });
                 return;
             }
 
-            if (!isValidMove(fromIndex, cellIndex, currentSymbol)) {
+            if (!isValidMove(fromIndex, cellIndex, currentSymbol, room)) {
                 socket.emit('error', { message: 'Invalid move! You can only move your pieces to empty cells.' });
                 return;
             }
 
             // Move the piece
-            gameState.board[fromIndex] = '';
-            gameState.board[cellIndex] = currentSymbol;
+            room.board[fromIndex] = '';
+            room.board[cellIndex] = currentSymbol;
             moveSuccessful = true;
         }
 
         if (moveSuccessful) {
+            room.lastActivity = new Date();
+
             // Check for win after any successful move
-            const winResult = checkWin(gameState.board);
+            const winResult = checkWin(room.board);
             if (winResult) {
-                gameState.gameActive = false;
-                gameState.scores[winResult.winner]++;
+                room.gameActive = false;
+                room.scores[winResult.winner]++;
 
                 // Update highscores
-                updateHighscoresAfterGame(winResult.winner);
+                updateHighscoresAfterGame(room, winResult.winner);
 
-                io.emit('gameOver', {
+                io.to(socket.playerRoom).emit('gameOver', {
                     winner: winResult.winner,
-                    winnerName: gameState.players.find(p => p.symbol === winResult.winner)?.username,
+                    winnerName: room.players.find(p => p.symbol === winResult.winner)?.username,
                     pattern: winResult.pattern,
-                    board: gameState.board,
-                    scores: gameState.scores,
-                    gamePhase: gameState.gamePhase
+                    board: room.board,
+                    scores: room.scores,
+                    gamePhase: room.gamePhase
                 });
-            } else if (gameState.gamePhase === 'placement' && checkDraw(gameState.board)) {
+            } else if (room.gamePhase === 'placement' && checkDraw(room.board)) {
                 // Only check for draw in placement phase
-                gameState.gameActive = false;
-                gameState.scores.draw++;
+                room.gameActive = false;
+                room.scores.draw++;
 
                 // Update highscores for draw
-                updateHighscoresAfterGame(null);
+                updateHighscoresAfterGame(room, null);
 
-                io.emit('gameOver', {
+                io.to(socket.playerRoom).emit('gameOver', {
                     winner: null,
                     draw: true,
-                    board: gameState.board,
-                    scores: gameState.scores,
-                    gamePhase: gameState.gamePhase
+                    board: room.board,
+                    scores: room.scores,
+                    gamePhase: room.gamePhase
                 });
             } else {
                 // Switch player
-                gameState.currentPlayer = gameState.currentPlayer === 'X' ? 'O' : 'X';
+                room.currentPlayer = room.currentPlayer === 'X' ? 'O' : 'X';
 
-                // Broadcast updated game state
-                io.emit('gameStateUpdate', {
-                    players: gameState.players,
-                    board: gameState.board,
-                    currentPlayer: gameState.currentPlayer,
-                    gameActive: gameState.gameActive,
-                    scores: gameState.scores,
-                    piecesPlaced: gameState.piecesPlaced,
-                    gamePhase: gameState.gamePhase,
-                    maxPieces: gameState.maxPieces
+                // Broadcast updated game state to room
+                io.to(socket.playerRoom).emit('gameStateUpdate', {
+                    players: room.players,
+                    board: room.board,
+                    currentPlayer: room.currentPlayer,
+                    gameActive: room.gameActive,
+                    scores: room.scores,
+                    piecesPlaced: room.piecesPlaced,
+                    gamePhase: room.gamePhase,
+                    maxPieces: room.maxPieces
                 });
             }
         }
@@ -455,37 +589,43 @@ io.on('connection', (socket) => {
 
     // Handle reset game
     socket.on('resetGame', () => {
-        if (!socket.player) return;
+        if (!socket.player || !socket.playerRoom) return;
 
-        resetGame();
-        io.emit('gameStateUpdate', {
-            players: gameState.players,
-            board: gameState.board,
-            currentPlayer: gameState.currentPlayer,
-            gameActive: gameState.gameActive,
-            scores: gameState.scores,
-            piecesPlaced: gameState.piecesPlaced,
-            gamePhase: gameState.gamePhase,
-            maxPieces: gameState.maxPieces,
-            pieceColors: gameState.pieceColors
+        const room = rooms.get(socket.playerRoom);
+        if (!room) return;
+
+        resetGame(room);
+        io.to(socket.playerRoom).emit('gameStateUpdate', {
+            players: room.players,
+            board: room.board,
+            currentPlayer: room.currentPlayer,
+            gameActive: room.gameActive,
+            scores: room.scores,
+            piecesPlaced: room.piecesPlaced,
+            gamePhase: room.gamePhase,
+            maxPieces: room.maxPieces,
+            pieceColors: room.pieceColors
         });
     });
 
     // Handle reset score
     socket.on('resetScore', () => {
-        if (!socket.player) return;
+        if (!socket.player || !socket.playerRoom) return;
 
-        gameState.scores = { X: 0, O: 0, draw: 0 };
-        io.emit('gameStateUpdate', {
-            players: gameState.players,
-            board: gameState.board,
-            currentPlayer: gameState.currentPlayer,
-            gameActive: gameState.gameActive,
-            scores: gameState.scores,
-            piecesPlaced: gameState.piecesPlaced,
-            gamePhase: gameState.gamePhase,
-            maxPieces: gameState.maxPieces,
-            pieceColors: gameState.pieceColors
+        const room = rooms.get(socket.playerRoom);
+        if (!room) return;
+
+        room.scores = { X: 0, O: 0, draw: 0 };
+        io.to(socket.playerRoom).emit('gameStateUpdate', {
+            players: room.players,
+            board: room.board,
+            currentPlayer: room.currentPlayer,
+            gameActive: room.gameActive,
+            scores: room.scores,
+            piecesPlaced: room.piecesPlaced,
+            gamePhase: room.gamePhase,
+            maxPieces: room.maxPieces,
+            pieceColors: room.pieceColors
         });
     });
 
@@ -510,11 +650,16 @@ io.on('connection', (socket) => {
             return;
         }
 
-        // Update server-side color
-        gameState.pieceColors[piece] = color;
+        if (!socket.playerRoom) return;
 
-        // Broadcast color change to all players
-        io.emit('colorChanged', {
+        const room = rooms.get(socket.playerRoom);
+        if (!room) return;
+
+        // Update server-side color
+        room.pieceColors[piece] = color;
+
+        // Broadcast color change to all players in room
+        io.to(socket.playerRoom).emit('colorChanged', {
             piece: piece,
             color: color
         });
@@ -561,9 +706,14 @@ io.on('connection', (socket) => {
             return;
         }
 
-        // Check if username is already taken (case-insensitive, excluding current user)
-        const existingPlayer = gameState.players.find(p =>
-            p.id !== socket.id && p.username.toLowerCase() === trimmedUsername.toLowerCase()
+        if (!socket.playerRoom) return;
+
+        const room = rooms.get(socket.playerRoom);
+        if (!room) return;
+
+        // Check if username is already taken in this room (case-insensitive, excluding current user)
+        const existingPlayer = room.players.find(p =>
+            p.id !== socket.id && p.username && p.username.toLowerCase() === trimmedUsername.toLowerCase()
         );
 
         if (existingPlayer) {
@@ -585,17 +735,17 @@ io.on('connection', (socket) => {
             message: 'Username updated successfully!'
         });
 
-        // Broadcast updated game state to all players
-        io.emit('gameStateUpdate', {
-            players: gameState.players,
-            board: gameState.board,
-            currentPlayer: gameState.currentPlayer,
-            gameActive: gameState.gameActive,
-            scores: gameState.scores,
-            piecesPlaced: gameState.piecesPlaced,
-            gamePhase: gameState.gamePhase,
-            maxPieces: gameState.maxPieces,
-            pieceColors: gameState.pieceColors
+        // Broadcast updated game state to all players in room
+        io.to(socket.playerRoom).emit('gameStateUpdate', {
+            players: room.players,
+            board: room.board,
+            currentPlayer: room.currentPlayer,
+            gameActive: room.gameActive,
+            scores: room.scores,
+            piecesPlaced: room.piecesPlaced,
+            gamePhase: room.gamePhase,
+            maxPieces: room.maxPieces,
+            pieceColors: room.pieceColors
         });
 
         console.log(`${oldUsername} changed username to ${trimmedUsername}`);
@@ -633,36 +783,40 @@ io.on('connection', (socket) => {
     socket.on('disconnect', () => {
         console.log(`User disconnected: ${socket.id}`);
 
-        if (socket.player) {
-            // Remove player from game
-            gameState.players = gameState.players.filter(p => p.id !== socket.id);
+        if (socket.player && socket.playerRoom) {
+            const room = rooms.get(socket.playerRoom);
+            if (room) {
+                // Remove player from room
+                room.players = room.players.filter(p => p.id !== socket.id);
 
-            // Reset game state
-            resetGame();
-            gameState.scores = { X: 0, O: 0, draw: 0 };
+                // Reset room state
+                resetGame(room);
+                room.scores = { X: 0, O: 0, draw: 0 };
+                room.lastActivity = new Date();
 
-            // Reassign symbols if needed
-            gameState.players.forEach((player, index) => {
-                player.symbol = index === 0 ? 'X' : 'O';
-            });
+                // Reassign symbols if needed
+                room.players.forEach((player, index) => {
+                    player.symbol = index === 0 ? 'X' : 'O';
+                });
 
-            // Broadcast updated state
-            io.emit('playerDisconnected', {
-                username: socket.player.username
-            });
+                // Broadcast updated state to room
+                io.to(socket.playerRoom).emit('playerDisconnected', {
+                    username: socket.player.username
+                });
 
-            io.emit('gameStateUpdate', {
-                players: gameState.players,
-                board: gameState.board,
-                currentPlayer: gameState.currentPlayer,
-                gameActive: gameState.gameActive,
-                scores: gameState.scores,
-                piecesPlaced: gameState.piecesPlaced,
-                gamePhase: gameState.gamePhase,
-                maxPieces: gameState.maxPieces
-            });
+                io.to(socket.playerRoom).emit('gameStateUpdate', {
+                    players: room.players,
+                    board: room.board,
+                    currentPlayer: room.currentPlayer,
+                    gameActive: room.gameActive,
+                    scores: room.scores,
+                    piecesPlaced: room.piecesPlaced,
+                    gamePhase: room.gamePhase,
+                    maxPieces: room.maxPieces
+                });
 
-            console.log(`${socket.player.username} disconnected and removed from game`);
+                console.log(`${socket.player.username} disconnected and removed from room ${socket.playerRoom}`);
+            }
         }
     });
 });
@@ -700,6 +854,6 @@ process.on('SIGINT', () => {
 server.listen(PORT, HOST, () => {
     console.log(`🚀 Server running on ${process.env.WEBSITE_HOSTNAME ? 'https://' + process.env.WEBSITE_HOSTNAME : `http://localhost:${PORT}`}`);
     console.log(`📊 Health check: /health`);
-    console.log(`🎮 Game ready for ${gameState.maxPlayers} players`);
+    console.log(`🎮 Multi-room game system ready - create or join rooms with game codes`);
     console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
 });

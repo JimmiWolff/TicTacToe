@@ -67,6 +67,46 @@
         </div>
     </div>
 
+    <!-- Room Selection Modal -->
+    <div id="roomModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h2>Choose Game Room</h2>
+            <div id="roomStatus" class="login-status"></div>
+
+            <div class="room-selection">
+                <div class="room-option">
+                    <h3>Join Existing Game</h3>
+                    <p>Enter a 6-character game code to join a friend's game</p>
+                    <form id="joinRoomForm">
+                        <div class="form-group">
+                            <label for="roomCodeInput">Game Code:</label>
+                            <input type="text" id="roomCodeInput" name="roomCode" required
+                                   placeholder="Enter game code (e.g. ABC123)" maxlength="6"
+                                   style="text-transform: uppercase;">
+                        </div>
+                        <button type="submit" class="auth-button primary">Join Game</button>
+                    </form>
+                </div>
+
+                <div class="room-divider">
+                    <span>OR</span>
+                </div>
+
+                <div class="room-option">
+                    <h3>Create New Game</h3>
+                    <p>Create a private game and share the code with a friend</p>
+                    <button id="createRoomBtn" class="auth-button secondary">Create New Game</button>
+                </div>
+
+                <div class="room-option">
+                    <h3>Quick Play</h3>
+                    <p>Join the default public room</p>
+                    <button id="quickPlayBtn" class="auth-button">Quick Play</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Registration Modal -->
     <div id="registrationModal" class="modal" style="display: none;">
         <div class="modal-content">
@@ -206,6 +246,11 @@
     <div class="container" id="gameContainer" style="display: none;">
         <div class="header">
             <h1>Tic Tac Toe</h1>
+            <div class="room-info" id="roomInfo" style="display: none;">
+                <span class="room-label">Room:</span>
+                <span class="room-code" id="roomCodeDisplay">DEFAULT</span>
+                <button class="share-room-btn" id="shareRoomBtn" title="Share Room Code">📋</button>
+            </div>
             <div class="user-info">
                 <div class="logged-users">
                     <div class="user-slot" id="player1Slot">

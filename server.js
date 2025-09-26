@@ -4,7 +4,7 @@ const socketIo = require('socket.io');
 const cors = require('cors');
 const path = require('path');
 const jwt = require('jsonwebtoken');
-const { connectToDatabase } = require('./database');
+const { connectToDatabase, getDatabase } = require('./database');
 const highscoreService = require('./highscore');
 require('dotenv').config();
 
@@ -236,6 +236,19 @@ const AUTH0_AUDIENCE = process.env.AUTH0_AUDIENCE;
 // In-memory user storage (in production, use a proper database)
 const registeredUsers = new Map();
 
+// Helper function to get stored username from database
+async function getStoredUsername(userId) {
+    try {
+        const db = getDatabase();
+        const collection = db.collection('highscores');
+        const user = await collection.findOne({ userId: userId });
+        return user ? user.username : null;
+    } catch (error) {
+        console.error('Error getting stored username:', error);
+        return null;
+    }
+}
+
 // Helper functions
 function resetGame(room) {
     room.board = ['', '', '', '', '', '', '', '', ''];
@@ -358,7 +371,7 @@ io.on('connection', (socket) => {
     });
 
     // Handle login
-    socket.on('login', (data) => {
+    socket.on('login', async (data) => {
         const { username, password, token, customUsername } = data;
 
         let actualUsername = null;
@@ -368,9 +381,12 @@ io.on('connection', (socket) => {
         if (token) {
             const decoded = verifyToken(token);
             if (decoded) {
-                // Use custom username if provided, otherwise fall back to Auth0 profile
-                // Try multiple fields from Auth0 token
+                // First try to get stored username from database
+                const storedUsername = await getStoredUsername(decoded.sub);
+
+                // Use priority: customUsername > stored username from DB > Auth0 profile fields > userId
                 actualUsername = customUsername ||
+                               storedUsername ||
                                decoded.nickname ||
                                decoded.name ||
                                decoded.preferred_username ||

@@ -335,6 +335,7 @@ io.on('connection', (socket) => {
         const { roomCode } = data;
         const normalizedRoomCode = roomCode ? roomCode.toUpperCase() : DEFAULT_ROOM;
 
+
         // Leave current room if any
         if (socket.currentRoom) {
             socket.leave(socket.currentRoom);
@@ -354,7 +355,6 @@ io.on('connection', (socket) => {
             message: `Joined room ${normalizedRoomCode}`
         });
 
-        console.log(`Socket ${socket.id} joined room ${normalizedRoomCode}`);
     });
 
     // Handle login
@@ -369,7 +369,15 @@ io.on('connection', (socket) => {
             const decoded = verifyToken(token);
             if (decoded) {
                 // Use custom username if provided, otherwise fall back to Auth0 profile
-                actualUsername = customUsername || decoded.nickname || decoded.name || decoded.email;
+                // Try multiple fields from Auth0 token
+                actualUsername = customUsername ||
+                               decoded.nickname ||
+                               decoded.name ||
+                               decoded.preferred_username ||
+                               decoded.email ||
+                               decoded.sub ||
+                               'Unknown User';
+
                 userInfo = {
                     id: decoded.sub,
                     email: decoded.email,
@@ -392,19 +400,41 @@ io.on('connection', (socket) => {
             return;
         }
 
-        // Ensure user is in a room (default to DEFAULT_ROOM if not specified)
-        const roomCode = socket.currentRoom || DEFAULT_ROOM;
+        // Allow login without immediately joining a room
+        // The user will join a room later via room selection
         if (!socket.currentRoom) {
-            socket.join(DEFAULT_ROOM);
-            socket.currentRoom = DEFAULT_ROOM;
+            // Don't force into default room - let user choose room after login
+            // Create a temporary player object for the client
+            const tempPlayer = {
+                id: socket.id,
+                username: actualUsername,
+                symbol: null, // Will be assigned when joining a room
+                isReady: false
+            };
+
+            socket.emit('loginResponse', {
+                success: true,
+                message: `Welcome, ${actualUsername}! Please select a room to join.`,
+                needsRoom: true,
+                username: actualUsername,
+                player: tempPlayer
+            });
+            socket.userInfo = userInfo;
+            socket.actualUsername = actualUsername;
+            socket.player = tempPlayer;
+            return;
         }
+
+        const roomCode = socket.currentRoom;
 
         const room = getOrCreateRoom(roomCode);
         room.lastActivity = new Date();
 
+
         // Check if user is already logged in this room (case-insensitive)
         const existingPlayer = actualUsername ? room.players.find(p => p.username.toLowerCase() === actualUsername.toLowerCase()) : null;
         if (existingPlayer) {
+            console.log(`User ${actualUsername} already exists in room ${roomCode}`);
             socket.emit('loginResponse', {
                 success: false,
                 message: 'User is already logged in this room.'
@@ -457,7 +487,6 @@ io.on('connection', (socket) => {
             pieceColors: room.pieceColors
         });
 
-        console.log(`${actualUsername} logged in as ${player.symbol}`);
     });
 
     // Handle game moves (both placement and movement)

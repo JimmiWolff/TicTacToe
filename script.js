@@ -61,15 +61,6 @@ class TicTacToeMultiplayer {
         this.createRoomBtn = document.getElementById('createRoomBtn');
         this.quickPlayBtn = document.getElementById('quickPlayBtn');
 
-        // Debug: Check if room elements exist
-        console.log('Room elements found:', {
-            roomModal: !!this.roomModal,
-            roomStatus: !!this.roomStatus,
-            joinRoomForm: !!this.joinRoomForm,
-            roomCodeInput: !!this.roomCodeInput,
-            createRoomBtn: !!this.createRoomBtn,
-            quickPlayBtn: !!this.quickPlayBtn
-        });
 
         // Room info display elements
         this.roomInfo = document.getElementById('roomInfo');
@@ -362,10 +353,7 @@ class TicTacToeMultiplayer {
 
         // Room selection
         this.joinRoomForm.addEventListener('submit', (e) => this.handleJoinRoom(e));
-        this.createRoomBtn.addEventListener('click', () => {
-            console.log('Create room button event fired');
-            this.handleCreateRoom();
-        });
+        this.createRoomBtn.addEventListener('click', () => this.handleCreateRoom());
         this.quickPlayBtn.addEventListener('click', () => this.handleQuickPlay());
 
         // Room code input formatting
@@ -1161,11 +1149,9 @@ class TicTacToeMultiplayer {
     }
 
     async handleCreateRoom() {
-        console.log('Create room button clicked');
         this.showRoomStatus('Creating new room...', 'info');
 
         try {
-            console.log('Fetching /api/rooms/create');
             const response = await fetch('/api/rooms/create', {
                 method: 'POST',
                 headers: {
@@ -1173,16 +1159,12 @@ class TicTacToeMultiplayer {
                 }
             });
 
-            console.log('Response status:', response.status);
             const data = await response.json();
-            console.log('Response data:', data);
 
             if (data.success) {
-                console.log('Room created successfully:', data.roomCode);
                 this.socket.emit('joinRoom', { roomCode: data.roomCode });
                 this.showRoomStatus(`Created room ${data.roomCode}...`, 'info');
             } else {
-                console.error('Room creation failed:', data);
                 this.showRoomStatus('Failed to create room', 'error');
             }
         } catch (error) {
@@ -1209,14 +1191,9 @@ class TicTacToeMultiplayer {
     }
 
     updateRoomDisplay(roomCode) {
-        console.log('Updating room display with code:', roomCode);
-        console.log('Room info element exists:', !!this.roomInfo);
-
         if (roomCode === 'default') {
-            console.log('Hiding room display for default room');
             this.roomInfo.style.display = 'none';
         } else {
-            console.log('Showing room code:', roomCode);
             this.roomCodeDisplay.textContent = roomCode;
             this.roomInfo.style.display = 'flex';
         }

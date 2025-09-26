@@ -249,6 +249,30 @@ async function getStoredUsername(userId) {
     }
 }
 
+// Helper function to save username to database
+async function saveUsernameToDatabase(userId, username) {
+    try {
+        const db = getDatabase();
+        const collection = db.collection('highscores');
+
+        // Update or insert user record with new username
+        await collection.updateOne(
+            { userId: userId },
+            {
+                $set: {
+                    username: username,
+                    lastUpdated: new Date()
+                }
+            },
+            { upsert: true }
+        );
+        return true;
+    } catch (error) {
+        console.error('Error saving username to database:', error);
+        return false;
+    }
+}
+
 // Helper functions
 function resetGame(room) {
     room.board = ['', '', '', '', '', '', '', '', ''];
@@ -401,6 +425,14 @@ io.on('connection', (socket) => {
                     authType: 'auth0',
                     customUsername: customUsername ? true : false
                 };
+
+                // Save custom username to database for persistence
+                if (customUsername) {
+                    const saved = await saveUsernameToDatabase(decoded.sub, customUsername);
+                    if (!saved) {
+                        console.error('Failed to save custom username to database for user:', decoded.sub);
+                    }
+                }
             } else {
                 socket.emit('loginResponse', {
                     success: false,
@@ -713,7 +745,7 @@ io.on('connection', (socket) => {
     });
 
     // Handle username changes
-    socket.on('changeUsername', (data) => {
+    socket.on('changeUsername', async (data) => {
         const { newUsername } = data;
 
         if (!socket.player) {
@@ -772,6 +804,14 @@ io.on('connection', (socket) => {
         // Update the player's username
         const oldUsername = socket.player.username;
         socket.player.username = trimmedUsername;
+
+        // Save username to database for persistence
+        if (socket.userInfo && socket.userInfo.id) {
+            const saved = await saveUsernameToDatabase(socket.userInfo.id, trimmedUsername);
+            if (!saved) {
+                console.error('Failed to save username to database for user:', socket.userInfo.id);
+            }
+        }
 
         // Send success response to the requesting player
         socket.emit('usernameChanged', {

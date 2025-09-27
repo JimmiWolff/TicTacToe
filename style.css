@@ -1315,10 +1315,11 @@ button {
         max-width: 400px;
         margin: 5% auto;
         padding: 25px;
-        padding-bottom: calc(25px + env(safe-area-inset-bottom, 20px));
+        padding-bottom: calc(80px + env(safe-area-inset-bottom, 60px));
         border-radius: 12px;
         max-height: 90vh;
         overflow-y: auto;
+        box-sizing: border-box;
     }
 
     .modal-content h2 {
@@ -1329,7 +1330,7 @@ button {
     /* Room selection modal improvements */
     .room-selection {
         gap: 15px;
-        margin-bottom: calc(20px + env(safe-area-inset-bottom, 20px));
+        margin-bottom: calc(60px + env(safe-area-inset-bottom, 50px));
     }
 
     .room-option {
@@ -1391,9 +1392,15 @@ button {
         width: 98%;
         margin: 2% auto;
         padding: 20px;
-        padding-bottom: calc(30px + env(safe-area-inset-bottom, 25px));
+        padding-bottom: calc(90px + env(safe-area-inset-bottom, 70px));
         max-height: 96vh;
         overflow-y: auto;
+        box-sizing: border-box;
+    }
+
+    .room-selection {
+        gap: 12px;
+        margin-bottom: calc(70px + env(safe-area-inset-bottom, 60px));
     }
 
     .room-option {
@@ -1410,13 +1417,13 @@ button {
     }
 }
 
-/* Ultra-small screens (iPhone SE, etc.) with enhanced safe area padding */
-@media (max-width: 360px) {
+/* Ultra-small screens and iPhone 16 Pro with maximum safe area padding */
+@media (max-width: 430px) {
     .modal-content {
         width: 100%;
         margin: 0;
         padding: 15px;
-        padding-bottom: calc(40px + env(safe-area-inset-bottom, 30px));
+        padding-bottom: calc(120px + env(safe-area-inset-bottom, 100px));
         border-radius: 0;
         min-height: 100vh;
         max-height: 100vh;
@@ -1424,6 +1431,7 @@ button {
         display: flex;
         flex-direction: column;
         justify-content: flex-start;
+        box-sizing: border-box;
     }
 
     .modal-content h2 {
@@ -1433,7 +1441,7 @@ button {
 
     .room-selection {
         gap: 12px;
-        margin-bottom: calc(60px + env(safe-area-inset-bottom, 40px));
+        margin-bottom: calc(100px + env(safe-area-inset-bottom, 80px));
     }
 
     .room-option {

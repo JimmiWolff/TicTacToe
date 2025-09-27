@@ -699,6 +699,19 @@ button {
     font-size: 0.9em;
 }
 
+.room-option-content {
+    margin-top: 0;
+}
+
+.room-option-content .form-group {
+    margin-bottom: 15px;
+}
+
+.room-option-content .auth-button {
+    width: 100%;
+    margin-top: 10px;
+}
+
 .room-divider {
     text-align: center;
     position: relative;

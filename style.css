@@ -719,7 +719,8 @@ button {
     font-size: 0.9em;
     color: #6c757d;
     white-space: nowrap;
-    margin: 0;
+    margin: 0 !important;
+    margin-bottom: 0 !important;
 }
 
 .room-option-content .form-group input {

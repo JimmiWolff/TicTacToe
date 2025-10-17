@@ -890,6 +890,25 @@ button {
     background: linear-gradient(135deg, #e67e22 0%, #d68910 100%);
 }
 
+/* Sentry test button - TEMPORARY, remove after testing */
+.sentry-test-btn {
+    background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 1.2em;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(231, 76, 60, 0.2);
+}
+
+.sentry-test-btn:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 8px 20px rgba(231, 76, 60, 0.3);
+    background: linear-gradient(135deg, #c0392b 0%, #a93226 100%);
+}
+
 /* Enhanced Modal Styling */
 .highscores-modal {
     backdrop-filter: blur(10px);

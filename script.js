@@ -499,20 +499,6 @@ class TicTacToeMultiplayer {
         // Logout button
         this.logoutBtn.addEventListener('click', () => this.handleLogout());
 
-        // Temporary Sentry test button - REMOVE AFTER TESTING
-        const sentryTestBtn = document.getElementById('sentryTestBtn');
-        if (sentryTestBtn) {
-            sentryTestBtn.addEventListener('click', () => {
-                console.log('Testing Sentry error capture...');
-                // Capture a manual error
-                if (typeof Sentry !== 'undefined') {
-                    Sentry.captureException(new Error('Manual Sentry test error from production UI'));
-                }
-                // Also throw an error to test automatic capture
-                throw new Error('Production Sentry test - client-side error from test button');
-            });
-        }
-
         // Game cells
         this.cells.forEach((cell, index) => {
             cell.addEventListener('click', () => this.handleCellClick(index));

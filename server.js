@@ -86,6 +86,14 @@ app.get('/sentry/config', (req, res) => {
     });
 });
 
+// Test endpoint for Sentry - REMOVE THIS BEFORE PRODUCTION DEPLOYMENT
+// Uncomment to test Sentry error tracking:
+// app.get('/debug-sentry', (req, res) => {
+//     const error = new Error('Test Sentry error - this should appear in your Sentry dashboard');
+//     Sentry.captureException(error);
+//     throw error;
+// });
+
 // JWT verification middleware
 function verifyToken(token) {
     try {

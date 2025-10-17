@@ -1646,14 +1646,17 @@ button {
 }
 
 .delete-btn {
-    padding: 10px 12px;
+    padding: 8px 10px;
     background: #f44336;
-    font-size: 1.2em;
+    font-size: 1em;
     min-width: auto;
+    width: auto;
+    line-height: 1;
 }
 
 .delete-btn:hover {
     background: #d32f2f;
+    transform: scale(1.05);
 }
 
 /* Mobile responsive for My Games */

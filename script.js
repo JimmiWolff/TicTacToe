@@ -161,26 +161,40 @@ class TicTacToeMultiplayer {
                 authorizationParams: {
                     redirect_uri: window.location.origin,
                     audience: config.audience
-                }
+                },
+                cacheLocation: 'localstorage',
+                useRefreshTokens: true
             });
 
             console.log('Auth0 client created successfully');
 
             // Handle Auth0 callback FIRST (before checking isAuthenticated)
-            if (window.location.search.includes('code=')) {
+            if (window.location.search.includes('code=') || window.location.search.includes('state=')) {
                 console.log('Handling Auth0 callback...');
-                await this.auth0.handleRedirectCallback();
-                await this.handleAuth0Login();
+                try {
+                    await this.auth0.handleRedirectCallback();
+                    await this.handleAuth0Login();
+                } catch (callbackError) {
+                    console.error('Callback handling error:', callbackError);
+                }
                 // Clean up URL
                 window.history.replaceState({}, document.title, window.location.pathname);
             } else {
                 // Check if user is authenticated (only if not handling callback)
                 console.log('Checking authentication status...');
-                const isAuthenticated = await this.auth0.isAuthenticated();
-                console.log('Authentication status:', isAuthenticated);
+                try {
+                    const isAuthenticated = await Promise.race([
+                        this.auth0.isAuthenticated(),
+                        new Promise((_, reject) => setTimeout(() => reject(new Error('Auth check timeout')), 5000))
+                    ]);
+                    console.log('Authentication status:', isAuthenticated);
 
-                if (isAuthenticated) {
-                    await this.handleAuth0Login();
+                    if (isAuthenticated) {
+                        await this.handleAuth0Login();
+                    }
+                } catch (authCheckError) {
+                    console.warn('Auth check failed or timed out:', authCheckError);
+                    // Continue anyway - user can still log in
                 }
             }
 

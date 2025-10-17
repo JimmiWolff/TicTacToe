@@ -61,6 +61,11 @@ class TicTacToeMultiplayer {
         this.createRoomBtn = document.getElementById('createRoomBtn');
         this.quickPlayBtn = document.getElementById('quickPlayBtn');
 
+        // My Games elements
+        this.myGamesSection = document.getElementById('myGamesSection');
+        this.myGamesList = document.getElementById('myGamesList');
+        this.myGamesLoading = document.getElementById('myGamesLoading');
+
 
         // Room info display elements
         this.roomInfo = document.getElementById('roomInfo');
@@ -312,6 +317,11 @@ class TicTacToeMultiplayer {
             } else {
                 this.showRoomStatus(data.message, 'error');
             }
+        });
+
+        // My Games listeners
+        this.socket.on('myGamesUpdate', (data) => {
+            this.updateMyGamesDisplay(data.games);
         });
     }
 
@@ -1183,6 +1193,11 @@ class TicTacToeMultiplayer {
         this.loginModal.style.display = 'none';
         this.usernameModal.style.display = 'none';
         this.registrationModal.style.display = 'none';
+
+        // Load user's active games if logged in
+        if (this.currentUser && this.currentUser.userId) {
+            this.loadMyGames();
+        }
     }
 
     showRoomStatus(message, type) {
@@ -1328,6 +1343,91 @@ class TicTacToeMultiplayer {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    // My Games methods
+    loadMyGames() {
+        if (!this.currentUser || !this.currentUser.userId) {
+            return;
+        }
+
+        this.myGamesLoading.style.display = 'flex';
+        this.myGamesList.style.display = 'none';
+
+        this.socket.emit('getMyGames', { userId: this.currentUser.userId });
+    }
+
+    updateMyGamesDisplay(games) {
+        this.myGamesLoading.style.display = 'none';
+
+        if (!games || games.length === 0) {
+            this.myGamesSection.style.display = 'none';
+            return;
+        }
+
+        this.myGamesSection.style.display = 'block';
+        this.myGamesList.style.display = 'block';
+
+        const html = games.map(game => {
+            // Find opponent
+            const opponent = game.players.find(p => p.userId !== this.currentUser.userId);
+            const opponentName = opponent ? opponent.username : 'Waiting...';
+            const myPlayer = game.players.find(p => p.userId === this.currentUser.userId);
+
+            // Determine turn status
+            let turnStatus = '';
+            if (game.gameActive) {
+                if (myPlayer && game.currentPlayer === myPlayer.symbol) {
+                    turnStatus = '<span class="your-turn">Your turn</span>';
+                } else {
+                    turnStatus = '<span class="their-turn">Their turn</span>';
+                }
+            } else {
+                turnStatus = '<span class="game-ended">Game ended</span>';
+            }
+
+            // Format last activity
+            const lastActivity = new Date(game.lastActivity);
+            const timeAgo = this.getTimeAgo(lastActivity);
+
+            return `
+                <div class="my-game-item" data-room-code="${game.roomCode}">
+                    <div class="game-info">
+                        <div class="game-header">
+                            <span class="room-code-badge">🎮 ${game.roomCode}</span>
+                            ${turnStatus}
+                        </div>
+                        <div class="game-details">
+                            <span class="opponent-name">vs. ${this.escapeHtml(opponentName)}</span>
+                            <span class="game-phase">${game.gamePhase === 'placement' ? 'Placement Phase' : 'Movement Phase'}</span>
+                        </div>
+                        <div class="game-meta">
+                            <span class="last-activity">Last active: ${timeAgo}</span>
+                            <span class="game-score">${game.scores.X}-${game.scores.O}-${game.scores.draw}</span>
+                        </div>
+                    </div>
+                    <button class="rejoin-btn auth-button primary" onclick="window.game.rejoinGame('${game.roomCode}')">
+                        Resume Game
+                    </button>
+                </div>
+            `;
+        }).join('');
+
+        this.myGamesList.innerHTML = html;
+    }
+
+    getTimeAgo(date) {
+        const seconds = Math.floor((new Date() - date) / 1000);
+
+        if (seconds < 60) return 'Just now';
+        if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+        if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+        return `${Math.floor(seconds / 86400)}d ago`;
+    }
+
+    rejoinGame(roomCode) {
+        this.socket.emit('joinRoom', { roomCode: roomCode });
+        this.showRoomStatus(`Rejoining game ${roomCode}...`, 'info');
     }
 }
 

@@ -1523,3 +1523,139 @@ button {
         margin-bottom: calc(15px + env(safe-area-inset-bottom, 15px));
     }
 }
+
+/* My Games Section Styles */
+.my-games-section {
+    border: 2px solid #4CAF50;
+    background: linear-gradient(135deg, #f5f9f5 0%, #e8f5e9 100%);
+}
+
+.my-games-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.my-game-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 15px;
+    padding: 15px;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    transition: all 0.2s;
+}
+
+.my-game-item:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    transform: translateY(-2px);
+}
+
+.game-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.game-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.room-code-badge {
+    font-weight: bold;
+    font-size: 1.1em;
+    color: #2c3e50;
+}
+
+.your-turn {
+    background: #4CAF50;
+    color: white;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 0.85em;
+    font-weight: bold;
+}
+
+.their-turn {
+    background: #ff9800;
+    color: white;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 0.85em;
+    font-weight: bold;
+}
+
+.game-ended {
+    background: #9e9e9e;
+    color: white;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 0.85em;
+    font-weight: bold;
+}
+
+.game-details {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.opponent-name {
+    font-size: 0.95em;
+    color: #555;
+}
+
+.game-phase {
+    font-size: 0.85em;
+    color: #777;
+    font-style: italic;
+}
+
+.game-meta {
+    display: flex;
+    gap: 15px;
+    font-size: 0.85em;
+    color: #999;
+    flex-wrap: wrap;
+}
+
+.game-score {
+    font-weight: bold;
+    color: #666;
+}
+
+.rejoin-btn {
+    flex-shrink: 0;
+    padding: 10px 20px;
+    white-space: nowrap;
+}
+
+/* Mobile responsive for My Games */
+@media (max-width: 768px) {
+    .my-game-item {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+
+    .rejoin-btn {
+        width: 100%;
+    }
+
+    .game-header,
+    .game-details,
+    .game-meta {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+    }
+}

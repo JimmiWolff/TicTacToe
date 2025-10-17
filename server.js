@@ -301,9 +301,49 @@ function cleanupEmptyRooms() {
     }
 }
 
-// Legacy support - default room for backward compatibility
+// Public room constants
+const PUBLIC_ROOM_PREFIX = 'PUBLIC-';
+const PUBLIC_ROOM_MAX_PLAYERS = 2;
+
+// Find an available public room or create a new one
+function findAvailablePublicRoom() {
+    // Find all existing public rooms
+    const publicRooms = Array.from(rooms.entries())
+        .filter(([roomId, room]) => roomId.startsWith(PUBLIC_ROOM_PREFIX))
+        .sort((a, b) => {
+            // Sort by room number (PUBLIC-1, PUBLIC-2, etc.)
+            const numA = parseInt(a[0].replace(PUBLIC_ROOM_PREFIX, ''));
+            const numB = parseInt(b[0].replace(PUBLIC_ROOM_PREFIX, ''));
+            return numA - numB;
+        });
+
+    // Try to find a room with available space
+    for (const [roomId, room] of publicRooms) {
+        if (room.players.length < PUBLIC_ROOM_MAX_PLAYERS) {
+            console.log(`Found available public room: ${roomId} (${room.players.length}/${PUBLIC_ROOM_MAX_PLAYERS} players)`);
+            return roomId;
+        }
+    }
+
+    // All rooms are full, create a new one
+    const nextRoomNumber = publicRooms.length + 1;
+    const newRoomId = `${PUBLIC_ROOM_PREFIX}${nextRoomNumber}`;
+
+    console.log(`Creating new public room: ${newRoomId}`);
+
+    // Add Sentry breadcrumb for public room creation
+    Sentry.addBreadcrumb({
+        category: 'game',
+        message: 'New public room created',
+        data: { roomId: newRoomId, totalPublicRooms: nextRoomNumber },
+        level: 'info'
+    });
+
+    return newRoomId;
+}
+
+// Legacy support - keep for backward compatibility with existing saved games
 const DEFAULT_ROOM = 'default';
-// Don't create default room on startup - it will be created when first user joins
 
 // Auth0 Configuration
 const AUTH0_DOMAIN = process.env.AUTH0_DOMAIN;
@@ -480,13 +520,21 @@ io.on('connection', (socket) => {
     socket.on('joinRoom', async (data) => {
         try {
             const { roomCode } = data;
-            const normalizedRoomCode = roomCode ? roomCode.toUpperCase() : DEFAULT_ROOM;
+
+            // If no room code provided (Quick Play), find or create an available public room
+            let normalizedRoomCode;
+            if (!roomCode) {
+                normalizedRoomCode = findAvailablePublicRoom();
+                console.log(`Quick Play: Assigning user to room ${normalizedRoomCode}`);
+            } else {
+                normalizedRoomCode = roomCode.toUpperCase();
+            }
 
             // Add Sentry breadcrumb
             Sentry.addBreadcrumb({
                 category: 'game',
                 message: 'User joining room',
-                data: { roomCode: normalizedRoomCode },
+                data: { roomCode: normalizedRoomCode, isQuickPlay: !roomCode },
                 level: 'info'
             });
 

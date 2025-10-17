@@ -126,6 +126,11 @@ class TicTacToeMultiplayer {
 
     async initializeAuth0() {
         try {
+            // Disable login buttons during initialization
+            this.auth0LoginBtn.disabled = true;
+            this.auth0RegisterBtn.disabled = true;
+            this.auth0LoginBtn.textContent = 'Loading...';
+
             // Check if Auth0 SDK is available
             if (typeof createAuth0Client === 'undefined') {
                 throw new Error('Auth0 SDK not loaded. createAuth0Client is undefined.');
@@ -139,6 +144,11 @@ class TicTacToeMultiplayer {
             }
 
             const config = await response.json();
+
+            // Validate config
+            if (!config.domain || !config.clientId) {
+                throw new Error('Auth0 configuration is incomplete');
+            }
 
             this.auth0 = await createAuth0Client({
                 domain: config.domain,
@@ -163,10 +173,25 @@ class TicTacToeMultiplayer {
                 // Clean up URL
                 window.history.replaceState({}, document.title, window.location.pathname);
             }
+
+            // Re-enable buttons after successful initialization
+            this.auth0LoginBtn.disabled = false;
+            this.auth0RegisterBtn.disabled = false;
+            this.auth0LoginBtn.textContent = 'Login';
+
         } catch (error) {
             console.error('Auth0 initialization error:', error);
             console.error('Error details:', error.message);
-            this.showLoginStatus('Auth0 setup required.', 'error');
+
+            // Re-enable buttons but show error state
+            this.auth0LoginBtn.disabled = false;
+            this.auth0RegisterBtn.disabled = false;
+            this.auth0LoginBtn.textContent = 'Login';
+
+            this.showLoginStatus('Auth0 setup required. Check console for details.', 'error');
+
+            // Set auth0 to null so click handlers know it's not available
+            this.auth0 = null;
         }
     }
 
@@ -420,11 +445,15 @@ class TicTacToeMultiplayer {
 
     async handleAuth0LoginClick() {
         if (!this.auth0) {
-            this.showLoginStatus('Auth0 not configured.', 'error');
+            this.showLoginStatus('Auth0 is still initializing. Please wait a moment and try again.', 'error');
+            // Retry initialization
+            console.log('Retrying Auth0 initialization...');
+            await this.initializeAuth0();
             return;
         }
 
         try {
+            this.showLoginStatus('Redirecting to login...', 'info');
             await this.auth0.loginWithRedirect({
                 authorizationParams: {
                     prompt: 'login'
@@ -438,11 +467,15 @@ class TicTacToeMultiplayer {
 
     async handleAuth0RegisterClick() {
         if (!this.auth0) {
-            this.showLoginStatus('Auth0 not configured. Please use local registration.', 'error');
+            this.showRegistrationStatus('Auth0 is still initializing. Please wait a moment and try again.', 'error');
+            // Retry initialization
+            console.log('Retrying Auth0 initialization...');
+            await this.initializeAuth0();
             return;
         }
 
         try {
+            this.showRegistrationStatus('Redirecting to registration...', 'info');
             await this.auth0.loginWithRedirect({
                 authorizationParams: {
                     screen_hint: 'signup'

@@ -326,10 +326,19 @@ function findAvailablePublicRoom() {
     }
 
     // All rooms are full, create a new one
-    const nextRoomNumber = publicRooms.length + 1;
+    // Find the highest room number and increment
+    let maxRoomNumber = 0;
+    for (const [roomId] of publicRooms) {
+        const roomNumber = parseInt(roomId.replace(PUBLIC_ROOM_PREFIX, ''));
+        if (roomNumber > maxRoomNumber) {
+            maxRoomNumber = roomNumber;
+        }
+    }
+
+    const nextRoomNumber = maxRoomNumber + 1;
     const newRoomId = `${PUBLIC_ROOM_PREFIX}${nextRoomNumber}`;
 
-    console.log(`Creating new public room: ${newRoomId}`);
+    console.log(`Creating new public room: ${newRoomId} (${publicRooms.length} existing rooms)`);
 
     // Add Sentry breadcrumb for public room creation
     Sentry.addBreadcrumb({

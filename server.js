@@ -1012,6 +1012,63 @@ io.on('connection', (socket) => {
         }
     });
 
+    // Handle delete game request
+    socket.on('deleteGame', async (data) => {
+        const { roomCode, userId } = data;
+
+        if (!roomCode || !userId) {
+            socket.emit('error', { message: 'Room code and user ID required' });
+            return;
+        }
+
+        try {
+            // Verify user is a player in this game
+            const game = await gameStateService.loadGame(roomCode);
+            if (!game) {
+                socket.emit('deleteGameResponse', {
+                    success: false,
+                    message: 'Game not found'
+                });
+                return;
+            }
+
+            const isPlayer = game.players.some(p => p.userId === userId);
+            if (!isPlayer) {
+                socket.emit('deleteGameResponse', {
+                    success: false,
+                    message: 'You are not a player in this game'
+                });
+                return;
+            }
+
+            // Delete from database
+            const deleted = await gameStateService.deleteGame(roomCode);
+
+            // Also remove from in-memory rooms
+            if (rooms.has(roomCode)) {
+                rooms.delete(roomCode);
+            }
+
+            // Notify other players in the room
+            io.to(roomCode).emit('gameDeleted', {
+                message: 'This game has been deleted by a player'
+            });
+
+            socket.emit('deleteGameResponse', {
+                success: true,
+                message: 'Game deleted successfully'
+            });
+
+            console.log(`Game ${roomCode} deleted by user ${userId}`);
+        } catch (error) {
+            console.error('Error deleting game:', error);
+            socket.emit('deleteGameResponse', {
+                success: false,
+                message: 'Failed to delete game'
+            });
+        }
+    });
+
     // Handle disconnect
     socket.on('disconnect', async () => {
         console.log(`User disconnected: ${socket.id}`);

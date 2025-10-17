@@ -375,6 +375,27 @@ class TicTacToeMultiplayer {
         this.socket.on('myGamesUpdate', (data) => {
             this.updateMyGamesDisplay(data.games);
         });
+
+        this.socket.on('deleteGameResponse', (data) => {
+            if (data.success) {
+                this.showGameMessage(data.message, 'success');
+                // Reload games list
+                if (this.currentUser && this.currentUser.userId) {
+                    this.loadMyGames();
+                }
+            } else {
+                this.showGameMessage(data.message, 'error');
+            }
+        });
+
+        this.socket.on('gameDeleted', (data) => {
+            this.showGameMessage(data.message, 'info');
+            // If user is in this game, redirect to room selection
+            setTimeout(() => {
+                this.resetToLoginScreen();
+                this.showRoomModal();
+            }, 2000);
+        });
     }
 
     addEventListeners() {
@@ -1466,9 +1487,14 @@ class TicTacToeMultiplayer {
                             <span class="game-score">${game.scores.X}-${game.scores.O}-${game.scores.draw}</span>
                         </div>
                     </div>
-                    <button class="rejoin-btn auth-button primary" onclick="window.game.rejoinGame('${game.roomCode}')">
-                        Resume Game
-                    </button>
+                    <div class="game-actions">
+                        <button class="rejoin-btn auth-button primary" onclick="window.game.rejoinGame('${game.roomCode}')">
+                            Resume Game
+                        </button>
+                        <button class="delete-btn auth-button secondary" onclick="window.game.deleteGame('${game.roomCode}')" title="Delete this game">
+                            🗑️
+                        </button>
+                    </div>
                 </div>
             `;
         }).join('');
@@ -1488,6 +1514,23 @@ class TicTacToeMultiplayer {
     rejoinGame(roomCode) {
         this.socket.emit('joinRoom', { roomCode: roomCode });
         this.showRoomStatus(`Rejoining game ${roomCode}...`, 'info');
+    }
+
+    deleteGame(roomCode) {
+        if (!this.currentUser || !this.currentUser.userId) {
+            this.showGameMessage('You must be logged in to delete a game', 'error');
+            return;
+        }
+
+        // Confirm deletion
+        const confirmed = confirm(`Are you sure you want to delete game ${roomCode}?\n\nThis will remove the game for all players and cannot be undone.`);
+
+        if (confirmed) {
+            this.socket.emit('deleteGame', {
+                roomCode: roomCode,
+                userId: this.currentUser.userId
+            });
+        }
     }
 }
 

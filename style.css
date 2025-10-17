@@ -1633,10 +1633,27 @@ button {
     color: #666;
 }
 
-.rejoin-btn {
+.game-actions {
+    display: flex;
+    gap: 8px;
     flex-shrink: 0;
+    align-items: center;
+}
+
+.rejoin-btn {
     padding: 10px 20px;
     white-space: nowrap;
+}
+
+.delete-btn {
+    padding: 10px 12px;
+    background: #f44336;
+    font-size: 1.2em;
+    min-width: auto;
+}
+
+.delete-btn:hover {
+    background: #d32f2f;
 }
 
 /* Mobile responsive for My Games */
@@ -1647,8 +1664,16 @@ button {
         gap: 12px;
     }
 
-    .rejoin-btn {
+    .game-actions {
         width: 100%;
+    }
+
+    .rejoin-btn {
+        flex: 1;
+    }
+
+    .delete-btn {
+        flex-shrink: 0;
     }
 
     .game-header,

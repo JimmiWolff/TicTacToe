@@ -131,11 +131,14 @@ class TicTacToeMultiplayer {
             this.auth0RegisterBtn.disabled = true;
             this.auth0LoginBtn.textContent = 'Loading...';
 
+            console.log('Starting Auth0 initialization...');
+
             // Check if Auth0 SDK is available
             if (typeof createAuth0Client === 'undefined') {
                 throw new Error('Auth0 SDK not loaded. createAuth0Client is undefined.');
             }
 
+            console.log('Auth0 SDK found');
 
             // Get Auth0 configuration from server
             const response = await fetch('/auth/config');
@@ -144,12 +147,14 @@ class TicTacToeMultiplayer {
             }
 
             const config = await response.json();
+            console.log('Auth0 config received:', { domain: config.domain, clientId: config.clientId });
 
             // Validate config
             if (!config.domain || !config.clientId) {
                 throw new Error('Auth0 configuration is incomplete');
             }
 
+            console.log('Creating Auth0 client...');
             this.auth0 = await createAuth0Client({
                 domain: config.domain,
                 clientId: config.clientId,
@@ -159,19 +164,24 @@ class TicTacToeMultiplayer {
                 }
             });
 
+            console.log('Auth0 client created successfully');
 
-            // Check if user is authenticated (returning from Auth0)
-            const isAuthenticated = await this.auth0.isAuthenticated();
-            if (isAuthenticated) {
-                await this.handleAuth0Login();
-            }
-
-            // Handle Auth0 callback
+            // Handle Auth0 callback FIRST (before checking isAuthenticated)
             if (window.location.search.includes('code=')) {
+                console.log('Handling Auth0 callback...');
                 await this.auth0.handleRedirectCallback();
                 await this.handleAuth0Login();
                 // Clean up URL
                 window.history.replaceState({}, document.title, window.location.pathname);
+            } else {
+                // Check if user is authenticated (only if not handling callback)
+                console.log('Checking authentication status...');
+                const isAuthenticated = await this.auth0.isAuthenticated();
+                console.log('Authentication status:', isAuthenticated);
+
+                if (isAuthenticated) {
+                    await this.handleAuth0Login();
+                }
             }
 
             // Re-enable buttons after successful initialization
@@ -179,9 +189,12 @@ class TicTacToeMultiplayer {
             this.auth0RegisterBtn.disabled = false;
             this.auth0LoginBtn.textContent = 'Login';
 
+            console.log('Auth0 initialization complete');
+
         } catch (error) {
             console.error('Auth0 initialization error:', error);
             console.error('Error details:', error.message);
+            console.error('Error stack:', error.stack);
 
             // Re-enable buttons but show error state
             this.auth0LoginBtn.disabled = false;

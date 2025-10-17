@@ -1,3 +1,25 @@
+// Initialize Sentry FIRST before any other imports
+require('dotenv').config();
+const Sentry = require("@sentry/node");
+
+// Initialize Sentry
+Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    environment: process.env.NODE_ENV || 'development',
+    integrations: [
+        // Add profiling if available
+        ...(Sentry.profilingIntegration ? [Sentry.profilingIntegration()] : []),
+    ],
+    // Performance Monitoring
+    tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0,
+    // Profiling
+    profilesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0,
+    // Release tracking
+    release: `tic-tac-toe@${process.env.npm_package_version || '1.0.1'}`,
+    // Don't send errors in development unless explicitly enabled
+    enabled: process.env.NODE_ENV === 'production' || process.env.SENTRY_ENABLED === 'true',
+});
+
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
@@ -7,7 +29,6 @@ const jwt = require('jsonwebtoken');
 const { connectToDatabase, getDatabase } = require('./database');
 const highscoreService = require('./highscore');
 const gameStateService = require('./gameState');
-require('dotenv').config();
 
 const app = express();
 const server = http.createServer(app);
@@ -26,6 +47,12 @@ const io = socketIo(server, {
 });
 
 // Middleware
+// Sentry request handler must be first (only if enabled)
+if (Sentry.Handlers) {
+    app.use(Sentry.Handlers.requestHandler());
+    app.use(Sentry.Handlers.tracingHandler());
+}
+
 app.use(cors({
     origin: "*",
     credentials: true
@@ -46,6 +73,16 @@ app.get('/auth/config', (req, res) => {
         domain: AUTH0_DOMAIN,
         clientId: AUTH0_CLIENT_ID,
         audience: AUTH0_AUDIENCE
+    });
+});
+
+// Sentry configuration endpoint for client-side
+app.get('/sentry/config', (req, res) => {
+    res.json({
+        dsn: process.env.SENTRY_DSN_PUBLIC || process.env.SENTRY_DSN,
+        environment: process.env.NODE_ENV || 'development',
+        release: `tic-tac-toe@${process.env.npm_package_version || '1.0.1'}`,
+        enabled: process.env.NODE_ENV === 'production' || process.env.SENTRY_ENABLED === 'true'
     });
 });
 
@@ -433,37 +470,50 @@ io.on('connection', (socket) => {
 
     // Handle room joining
     socket.on('joinRoom', async (data) => {
-        const { roomCode } = data;
-        const normalizedRoomCode = roomCode ? roomCode.toUpperCase() : DEFAULT_ROOM;
+        try {
+            const { roomCode } = data;
+            const normalizedRoomCode = roomCode ? roomCode.toUpperCase() : DEFAULT_ROOM;
 
+            // Add Sentry breadcrumb
+            Sentry.addBreadcrumb({
+                category: 'game',
+                message: 'User joining room',
+                data: { roomCode: normalizedRoomCode },
+                level: 'info'
+            });
 
-        // Leave current room if any
-        if (socket.currentRoom) {
-            socket.leave(socket.currentRoom);
+            // Leave current room if any
+            if (socket.currentRoom) {
+                socket.leave(socket.currentRoom);
+            }
+
+            // Join new room
+            socket.join(normalizedRoomCode);
+            socket.currentRoom = normalizedRoomCode;
+
+            // Get or create room (async - loads from DB if exists)
+            const room = await getOrCreateRoom(normalizedRoomCode);
+            room.lastActivity = new Date();
+
+            socket.emit('roomJoined', {
+                success: true,
+                roomCode: normalizedRoomCode,
+                message: `Joined room ${normalizedRoomCode}`
+            });
+        } catch (error) {
+            console.error('Error joining room:', error);
+            Sentry.captureException(error);
+            socket.emit('error', { message: 'Failed to join room' });
         }
-
-        // Join new room
-        socket.join(normalizedRoomCode);
-        socket.currentRoom = normalizedRoomCode;
-
-        // Get or create room (async - loads from DB if exists)
-        const room = await getOrCreateRoom(normalizedRoomCode);
-        room.lastActivity = new Date();
-
-        socket.emit('roomJoined', {
-            success: true,
-            roomCode: normalizedRoomCode,
-            message: `Joined room ${normalizedRoomCode}`
-        });
-
     });
 
     // Handle login
     socket.on('login', async (data) => {
-        const { username, password, token, customUsername } = data;
+        try {
+            const { username, password, token, customUsername } = data;
 
-        let actualUsername = null;
-        let userInfo = null;
+            let actualUsername = null;
+            let userInfo = null;
 
         // Try Auth0 token first
         if (token) {
@@ -560,6 +610,12 @@ io.on('connection', (socket) => {
             // Update player status in database
             await gameStateService.updatePlayerStatus(roomCode, userInfo.id, socket.id);
 
+            // Set Sentry user context
+            Sentry.setUser({
+                id: userInfo.id,
+                username: actualUsername
+            });
+
             socket.emit('loginResponse', {
                 success: true,
                 message: `Welcome back, ${actualUsername}! Resuming game in room ${roomCode}`,
@@ -622,6 +678,12 @@ io.on('connection', (socket) => {
         // Save the new player to database
         await saveGameState(room);
 
+        // Set Sentry user context for new player
+        Sentry.setUser({
+            id: userInfo.id,
+            username: actualUsername
+        });
+
         // Send success response
         socket.emit('loginResponse', {
             success: true,
@@ -642,17 +704,25 @@ io.on('connection', (socket) => {
             maxPieces: room.maxPieces,
             pieceColors: room.pieceColors
         });
-
+        } catch (error) {
+            console.error('Login error:', error);
+            Sentry.captureException(error);
+            socket.emit('loginResponse', {
+                success: false,
+                message: 'Login failed. Please try again.'
+            });
+        }
     });
 
     // Handle game moves (both placement and movement)
     socket.on('makeMove', async (data) => {
-        const { cellIndex, fromIndex } = data; // fromIndex is provided for movement phase
+        try {
+            const { cellIndex, fromIndex } = data; // fromIndex is provided for movement phase
 
-        if (!socket.player || !socket.playerRoom) {
-            socket.emit('error', { message: 'You must be logged in to play.' });
-            return;
-        }
+            if (!socket.player || !socket.playerRoom) {
+                socket.emit('error', { message: 'You must be logged in to play.' });
+                return;
+            }
 
         const room = rooms.get(socket.playerRoom);
         if (!room) {
@@ -780,6 +850,11 @@ io.on('connection', (socket) => {
                     maxPieces: room.maxPieces
                 });
             }
+        }
+        } catch (error) {
+            console.error('Error making move:', error);
+            Sentry.captureException(error);
+            socket.emit('error', { message: 'Failed to make move' });
         }
     });
 
@@ -1121,6 +1196,17 @@ io.on('connection', (socket) => {
     });
 });
 
+// Sentry error handler must be before other error handlers (only if enabled)
+if (Sentry.Handlers) {
+    app.use(Sentry.Handlers.errorHandler());
+}
+
+// Optional: custom error handler
+app.use((err, req, res, next) => {
+    console.error('Express error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+});
+
 // Railway and Azure-friendly port configuration
 const PORT = process.env.PORT || process.env.WEBSITES_PORT || 3000;
 const HOST = process.env.RAILWAY_STATIC_URL ? '0.0.0.0' : (process.env.WEBSITE_HOSTNAME || '0.0.0.0');
@@ -1128,6 +1214,7 @@ const HOST = process.env.RAILWAY_STATIC_URL ? '0.0.0.0' : (process.env.WEBSITE_H
 // Enhanced error handling for Azure
 server.on('error', (error) => {
     console.error('Server error:', error);
+    Sentry.captureException(error);
     if (error.code === 'EADDRINUSE') {
         console.error(`Port ${PORT} is already in use`);
         process.exit(1);

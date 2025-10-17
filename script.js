@@ -1,3 +1,33 @@
+// Initialize Sentry for browser
+(async function initSentry() {
+    try {
+        // Fetch Sentry config from server
+        const response = await fetch('/sentry/config');
+        const config = await response.json();
+
+        if (config.dsn) {
+            Sentry.init({
+                dsn: config.dsn,
+                environment: config.environment || 'development',
+                integrations: [
+                    Sentry.browserTracingIntegration(),
+                    Sentry.replayIntegration(),
+                ],
+                // Performance Monitoring
+                tracesSampleRate: config.environment === 'production' ? 0.1 : 1.0,
+                // Session Replay
+                replaysSessionSampleRate: 0.1,
+                replaysOnErrorSampleRate: 1.0,
+                // Release tracking
+                release: config.release,
+                enabled: config.enabled || false
+            });
+        }
+    } catch (error) {
+        console.error('Failed to initialize Sentry:', error);
+    }
+})();
+
 class TicTacToeMultiplayer {
     constructor() {
         this.socket = io();
@@ -233,6 +263,14 @@ class TicTacToeMultiplayer {
                     this.currentUser.userId = this.pendingAuth.user.sub;
                 }
 
+                // Set Sentry user context
+                if (typeof Sentry !== 'undefined') {
+                    Sentry.setUser({
+                        id: this.currentUser.userId || this.currentUser.socketId,
+                        username: this.currentUser.username
+                    });
+                }
+
                 // If this is the initial authentication (no room selected yet)
                 if (!this.currentRoom) {
                     // Store auth data and show room selection
@@ -330,6 +368,10 @@ class TicTacToeMultiplayer {
         // Error messages
         this.socket.on('error', (data) => {
             this.showGameMessage(data.message, 'error');
+            // Capture error in Sentry
+            if (typeof Sentry !== 'undefined') {
+                Sentry.captureMessage(`Socket error: ${data.message}`, 'error');
+            }
         });
 
         // Connection status
@@ -338,6 +380,10 @@ class TicTacToeMultiplayer {
 
         this.socket.on('disconnect', () => {
             this.showLoginStatus('Connection lost. Please refresh the page.', 'error');
+            // Capture disconnect in Sentry
+            if (typeof Sentry !== 'undefined') {
+                Sentry.captureMessage('Socket disconnected', 'warning');
+            }
         });
 
         // Highscore listeners

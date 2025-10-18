@@ -1,0 +1,9 @@
+# robots.txt for Kryds og Bolle Online
+User-agent: *
+Allow: /
+
+# Sitemap location
+Sitemap: https://tic-tac-toe-multiplayer-production.up.railway.app/sitemap.xml
+
+# Crawl delay (optional - be nice to servers)
+Crawl-delay: 1

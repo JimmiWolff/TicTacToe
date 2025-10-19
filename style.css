@@ -1700,23 +1700,23 @@ button {
 /* Tablets and Small Desktops (769px+) */
 @media (min-width: 769px) {
     .container {
-        max-width: 650px;
-        padding: 40px;
+        max-width: 500px;
+        padding: 25px;
     }
 
     h1 {
-        font-size: 3em;
+        font-size: 2.2em;
     }
 
     .game-board {
-        max-width: 450px;
-        grid-gap: 12px;
-        padding: 12px;
+        max-width: 350px;
+        grid-gap: 10px;
+        padding: 10px;
     }
 
     .cell {
-        min-height: 120px;
-        font-size: 3.5em;
+        min-height: 90px;
+        font-size: 2.8em;
     }
 
     .modal-content {
@@ -1762,23 +1762,23 @@ button {
 /* Large Desktops (1200px+) */
 @media (min-width: 1200px) {
     .container {
-        max-width: 700px;
-        padding: 45px;
+        max-width: 520px;
+        padding: 28px;
     }
 
     h1 {
-        font-size: 3.2em;
+        font-size: 2.3em;
     }
 
     .game-board {
-        max-width: 480px;
-        grid-gap: 14px;
-        padding: 14px;
+        max-width: 370px;
+        grid-gap: 10px;
+        padding: 10px;
     }
 
     .cell {
-        min-height: 130px;
-        font-size: 3.8em;
+        min-height: 95px;
+        font-size: 3em;
     }
 
     .modal-content {
@@ -1804,22 +1804,22 @@ button {
 /* Ultra-Wide Monitors (1920px+) */
 @media (min-width: 1920px) {
     .container {
-        max-width: 750px;
-        padding: 50px;
+        max-width: 550px;
+        padding: 30px;
     }
 
     h1 {
-        font-size: 3.5em;
+        font-size: 2.5em;
     }
 
     .game-board {
-        max-width: 500px;
-        grid-gap: 16px;
-        padding: 16px;
+        max-width: 390px;
+        grid-gap: 12px;
+        padding: 12px;
     }
 
     .cell {
-        min-height: 140px;
-        font-size: 4em;
+        min-height: 100px;
+        font-size: 3.2em;
     }
 }

@@ -358,6 +358,8 @@ button {
     border-radius: 15px;
     width: 90%;
     max-width: 400px;
+    max-height: 85vh;
+    overflow-y: auto;
     box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
     text-align: center;
 }
@@ -1719,7 +1721,31 @@ button {
 
     .modal-content {
         max-width: 500px;
-        padding: 35px;
+        padding: 25px;
+        margin: 5% auto;
+    }
+
+    .modal-content h2 {
+        margin-bottom: 20px;
+    }
+
+    .room-selection {
+        gap: 12px;
+    }
+
+    .room-option {
+        padding: 15px;
+        min-height: 90px;
+    }
+
+    .room-option h3 {
+        font-size: 1.1em;
+        margin-bottom: 6px;
+    }
+
+    .room-option p {
+        font-size: 0.85em;
+        margin-bottom: 10px;
     }
 
     .highscores-modal-content {
@@ -1751,7 +1777,16 @@ button {
 
     .modal-content {
         max-width: 550px;
-        padding: 40px;
+        padding: 30px;
+        margin: 4% auto;
+    }
+
+    .room-selection {
+        gap: 15px;
+    }
+
+    .room-option {
+        padding: 18px;
     }
 
     .highscores-modal-content {

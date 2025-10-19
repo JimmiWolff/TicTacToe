@@ -73,11 +73,42 @@ MongoDB connection string is currently hardcoded in `database.js` and should be 
 
 ## Deployment
 
-The application is configured for Azure App Service deployment:
-- GitHub Actions workflow: `.github/workflows/azure-deploy.yml`
+The application is deployed on Railway with automatic deployments from GitHub:
+- Primary deployment: Railway (connected to GitHub repository)
 - Node.js 18.x runtime requirement
 - WebSocket support enabled for Socket.IO
 - Static file serving from root directory
+
+### Development Workflow
+
+**IMPORTANT: Always follow this workflow when making changes:**
+
+1. **Create a feature branch** for any new changes
+   ```bash
+   git checkout -b feature/your-feature-name
+   ```
+
+2. **Make your changes** and commit them
+   ```bash
+   git add .
+   git commit -m "Your commit message"
+   ```
+
+3. **Push the branch to GitHub** to make it available for testing on Railway
+   ```bash
+   git push -u origin feature/your-feature-name
+   ```
+
+4. **Test on Railway** by selecting the branch in Railway's deployment settings
+
+5. **Merge to main** only after testing is successful
+   ```bash
+   git checkout main
+   git merge feature/your-feature-name
+   git push origin main
+   ```
+
+**Note:** Railway needs the branch to be pushed to GitHub before it can be selected for deployment. Always push branches before attempting to test them on Railway.
 
 ## Key Files
 

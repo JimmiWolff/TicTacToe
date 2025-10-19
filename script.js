@@ -1509,6 +1509,13 @@ class TicTacToeMultiplayer {
             const opponentName = opponent ? opponent.username : 'Waiting...';
             const myPlayer = game.players.find(p => p.userId === this.currentUser.userId);
 
+            // Escape all values from server to prevent XSS
+            const escapedRoomCode = this.escapeHtml(game.roomCode);
+            const escapedOpponentName = this.escapeHtml(opponentName);
+            const escapedScoreX = this.escapeHtml(String(game.scores.X));
+            const escapedScoreO = this.escapeHtml(String(game.scores.O));
+            const escapedScoreDraw = this.escapeHtml(String(game.scores.draw));
+
             // Determine turn status
             let turnStatus = '';
             if (game.gameActive) {
@@ -1523,29 +1530,29 @@ class TicTacToeMultiplayer {
 
             // Format last activity
             const lastActivity = new Date(game.lastActivity);
-            const timeAgo = this.getTimeAgo(lastActivity);
+            const timeAgo = this.escapeHtml(this.getTimeAgo(lastActivity));
 
             return `
-                <div class="my-game-item" data-room-code="${game.roomCode}">
+                <div class="my-game-item" data-room-code="${escapedRoomCode}">
                     <div class="game-info">
                         <div class="game-header">
-                            <span class="room-code-badge">🎮 ${game.roomCode}</span>
+                            <span class="room-code-badge">🎮 ${escapedRoomCode}</span>
                             ${turnStatus}
                         </div>
                         <div class="game-details">
-                            <span class="opponent-name">vs. ${this.escapeHtml(opponentName)}</span>
+                            <span class="opponent-name">vs. ${escapedOpponentName}</span>
                             <span class="game-phase">${game.gamePhase === 'placement' ? 'Placement Phase' : 'Movement Phase'}</span>
                         </div>
                         <div class="game-meta">
                             <span class="last-activity">Last active: ${timeAgo}</span>
-                            <span class="game-score">${game.scores.X}-${game.scores.O}-${game.scores.draw}</span>
+                            <span class="game-score">${escapedScoreX}-${escapedScoreO}-${escapedScoreDraw}</span>
                         </div>
                     </div>
                     <div class="game-actions">
-                        <button class="rejoin-btn auth-button primary" onclick="window.game.rejoinGame('${game.roomCode}')">
+                        <button class="rejoin-btn auth-button primary" onclick="window.game.rejoinGame('${escapedRoomCode}')">
                             Resume Game
                         </button>
-                        <button class="delete-btn auth-button secondary" onclick="window.game.deleteGame('${game.roomCode}')" title="Delete this game">
+                        <button class="delete-btn auth-button secondary" onclick="window.game.deleteGame('${escapedRoomCode}')" title="Delete this game">
                             🗑️
                         </button>
                     </div>

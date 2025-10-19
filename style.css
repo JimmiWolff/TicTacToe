@@ -197,27 +197,27 @@ h1 {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
-    padding: 15px;
+    margin-bottom: 15px;
+    padding: 10px 12px;
     background: rgba(0, 0, 0, 0.05);
-    border-radius: 10px;
+    border-radius: 8px;
 }
 
 .current-player {
     font-weight: bold;
     color: #333;
-    font-size: 1.1em;
+    font-size: 1em;
 }
 
 .current-player span {
     color: #667eea;
-    font-size: 1.3em;
+    font-size: 1.15em;
 }
 
 .score {
     display: flex;
-    gap: 15px;
-    font-size: 0.9em;
+    gap: 12px;
+    font-size: 0.85em;
     color: #666;
 }
 
@@ -1727,29 +1727,29 @@ button {
     }
 
     .game-info {
-        font-size: 0.85em;
-        margin: 8px 0;
-        padding: 8px;
-        margin-bottom: 8px;
+        font-size: 0.75em;
+        margin: 5px 0;
+        padding: 6px 8px;
+        margin-bottom: 6px;
     }
 
     .player-info {
-        margin-bottom: 8px;
-        padding: 8px;
-        font-size: 0.85em;
+        margin-bottom: 6px;
+        padding: 6px;
+        font-size: 0.75em;
     }
 
     .current-player {
-        font-size: 0.95em;
+        font-size: 0.85em;
     }
 
     .current-player span {
-        font-size: 1.1em;
+        font-size: 0.95em;
     }
 
     .score {
-        font-size: 0.8em;
-        gap: 10px;
+        font-size: 0.7em;
+        gap: 8px;
     }
 
     .game-board {

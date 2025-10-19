@@ -94,6 +94,69 @@ app.get('/sentry/config', (req, res) => {
 //     throw error;
 // });
 
+// ⚠️ SECURITY TEST ENDPOINTS - INTENTIONALLY VULNERABLE - FOR SNYK TESTING ONLY ⚠️
+// These endpoints contain security vulnerabilities that Snyk should detect
+
+// Vulnerability 1: NoSQL Injection - unvalidated user input in MongoDB query
+app.get('/test/user-search', async (req, res) => {
+    try {
+        const db = getDatabase();
+        const username = req.query.username; // VULNERABLE: No input validation
+        // This allows NoSQL injection like: ?username[$ne]=null
+        const user = await db.collection('users').findOne({ username: username });
+        res.json(user);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Vulnerability 2: Command Injection - executing shell commands with user input
+const { exec } = require('child_process');
+app.get('/test/ping', (req, res) => {
+    const host = req.query.host; // VULNERABLE: No input validation
+    // Attacker could use: ?host=google.com;cat /etc/passwd
+    exec(`ping -c 1 ${host}`, (error, stdout, stderr) => {
+        res.send(stdout);
+    });
+});
+
+// Vulnerability 3: Hardcoded Secret
+const SECRET_API_KEY = 'sk-test-1234567890abcdef'; // VULNERABLE: Hardcoded secret
+app.get('/test/api-key', (req, res) => {
+    res.json({ apiKey: SECRET_API_KEY });
+});
+
+// Vulnerability 4: Path Traversal - unsafe file access
+const fs = require('fs');
+app.get('/test/read-file', (req, res) => {
+    const filename = req.query.file; // VULNERABLE: No path validation
+    // Attacker could use: ?file=../../etc/passwd
+    fs.readFile(filename, 'utf8', (err, data) => {
+        if (err) {
+            res.status(404).send('File not found');
+        } else {
+            res.send(data);
+        }
+    });
+});
+
+// Vulnerability 5: XSS - unescaped user input in HTML response
+app.get('/test/greet', (req, res) => {
+    const name = req.query.name; // VULNERABLE: No XSS sanitization
+    // Attacker could use: ?name=<script>alert('XSS')</script>
+    res.send(`<h1>Hello ${name}!</h1>`);
+});
+
+// Vulnerability 6: Weak cryptography
+const crypto = require('crypto');
+app.get('/test/hash', (req, res) => {
+    const data = req.query.data;
+    // VULNERABLE: MD5 is cryptographically broken
+    const hash = crypto.createHash('md5').update(data).digest('hex');
+    res.json({ hash });
+});
+// ⚠️ END OF SECURITY TEST ENDPOINTS ⚠️
+
 // JWT verification middleware
 function verifyToken(token) {
     try {

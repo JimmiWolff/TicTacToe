@@ -1720,32 +1720,38 @@ button {
     }
 
     .modal-content {
-        max-width: 500px;
-        padding: 25px;
-        margin: 5% auto;
+        max-width: 450px;
+        padding: 20px;
+        margin: 3% auto;
     }
 
     .modal-content h2 {
-        margin-bottom: 20px;
+        margin-bottom: 15px;
+        font-size: 1.5em;
     }
 
     .room-selection {
-        gap: 12px;
+        gap: 8px;
     }
 
     .room-option {
-        padding: 15px;
-        min-height: 90px;
+        padding: 12px;
+        min-height: 75px;
     }
 
     .room-option h3 {
-        font-size: 1.1em;
-        margin-bottom: 6px;
+        font-size: 1em;
+        margin-bottom: 4px;
     }
 
     .room-option p {
-        font-size: 0.85em;
-        margin-bottom: 10px;
+        font-size: 0.8em;
+        margin-bottom: 8px;
+    }
+
+    .auth-button {
+        padding: 10px 20px;
+        font-size: 0.95em;
     }
 
     .highscores-modal-content {
@@ -1776,17 +1782,18 @@ button {
     }
 
     .modal-content {
-        max-width: 550px;
-        padding: 30px;
-        margin: 4% auto;
+        max-width: 480px;
+        padding: 22px;
+        margin: 3% auto;
     }
 
     .room-selection {
-        gap: 15px;
+        gap: 10px;
     }
 
     .room-option {
-        padding: 18px;
+        padding: 14px;
+        min-height: 70px;
     }
 
     .highscores-modal-content {

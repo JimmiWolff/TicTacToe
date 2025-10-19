@@ -1700,23 +1700,30 @@ button {
 /* Tablets and Small Desktops (769px+) */
 @media (min-width: 769px) {
     .container {
-        max-width: 500px;
-        padding: 25px;
+        max-width: 420px;
+        padding: 18px;
     }
 
     h1 {
-        font-size: 2.2em;
+        font-size: 1.8em;
+        margin-bottom: 15px;
     }
 
     .game-board {
-        max-width: 350px;
-        grid-gap: 10px;
-        padding: 10px;
+        max-width: 300px;
+        grid-gap: 8px;
+        padding: 8px;
+        margin-bottom: 15px;
     }
 
     .cell {
-        min-height: 90px;
-        font-size: 2.8em;
+        min-height: 75px;
+        font-size: 2.3em;
+    }
+
+    button {
+        padding: 10px 18px;
+        font-size: 0.95em;
     }
 
     .modal-content {
@@ -1754,6 +1761,17 @@ button {
         font-size: 0.95em;
     }
 
+    .my-games-section h3 {
+        font-size: 1em;
+        margin-bottom: 8px;
+    }
+
+    .active-game-item {
+        padding: 6px 12px;
+        margin: 6px 0;
+        font-size: 0.85em;
+    }
+
     .highscores-modal-content {
         max-width: 900px;
     }
@@ -1762,23 +1780,24 @@ button {
 /* Large Desktops (1200px+) */
 @media (min-width: 1200px) {
     .container {
-        max-width: 520px;
-        padding: 28px;
+        max-width: 440px;
+        padding: 20px;
     }
 
     h1 {
-        font-size: 2.3em;
+        font-size: 1.9em;
+        margin-bottom: 18px;
     }
 
     .game-board {
-        max-width: 370px;
-        grid-gap: 10px;
-        padding: 10px;
+        max-width: 320px;
+        grid-gap: 8px;
+        padding: 8px;
     }
 
     .cell {
-        min-height: 95px;
-        font-size: 3em;
+        min-height: 80px;
+        font-size: 2.5em;
     }
 
     .modal-content {
@@ -1804,22 +1823,22 @@ button {
 /* Ultra-Wide Monitors (1920px+) */
 @media (min-width: 1920px) {
     .container {
-        max-width: 550px;
-        padding: 30px;
+        max-width: 460px;
+        padding: 22px;
     }
 
     h1 {
-        font-size: 2.5em;
+        font-size: 2em;
     }
 
     .game-board {
-        max-width: 390px;
-        grid-gap: 12px;
-        padding: 12px;
+        max-width: 340px;
+        grid-gap: 10px;
+        padding: 10px;
     }
 
     .cell {
-        min-height: 100px;
-        font-size: 3.2em;
+        min-height: 85px;
+        font-size: 2.6em;
     }
 }

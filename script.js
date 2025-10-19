@@ -1203,7 +1203,14 @@ class TicTacToeMultiplayer {
         const xColor = this.xColorPicker.value;
         const oColor = this.oColorPicker.value;
 
-        // Create/update custom CSS styles
+        // Validate color format (hex color only) to prevent XSS
+        const hexColorPattern = /^#[0-9A-Fa-f]{6}$/;
+        if (!hexColorPattern.test(xColor) || !hexColorPattern.test(oColor)) {
+            console.error('Invalid color format detected');
+            return;
+        }
+
+        // Create/update custom CSS styles using textContent to prevent XSS
         let styleSheet = document.getElementById('customPieceColors');
         if (!styleSheet) {
             styleSheet = document.createElement('style');
@@ -1211,7 +1218,8 @@ class TicTacToeMultiplayer {
             document.head.appendChild(styleSheet);
         }
 
-        styleSheet.innerHTML = `
+        // Use textContent instead of innerHTML to prevent XSS
+        styleSheet.textContent = `
             .cell.x {
                 color: ${xColor} !important;
             }

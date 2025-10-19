@@ -488,14 +488,14 @@ button {
 .player-info {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
 }
 
 .player-symbol {
-    font-size: 1.5em;
+    font-size: 1.2em;
     font-weight: bold;
-    width: 30px;
-    height: 30px;
+    width: 25px;
+    height: 25px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -519,13 +519,13 @@ button {
 }
 
 .player-label {
-    font-size: 0.8em;
+    font-size: 0.7em;
     color: #777;
     font-weight: 400;
 }
 
 .player-name {
-    font-size: 1em;
+    font-size: 0.9em;
     font-weight: 600;
     color: #333;
 }
@@ -1734,9 +1734,24 @@ button {
     }
 
     .player-info {
-        margin-bottom: 6px;
-        padding: 6px;
-        font-size: 0.75em;
+        margin-bottom: 4px;
+        padding: 4px 6px;
+        font-size: 0.7em;
+        gap: 6px;
+    }
+
+    .player-symbol {
+        font-size: 1em;
+        width: 20px;
+        height: 20px;
+    }
+
+    .player-label {
+        font-size: 0.65em;
+    }
+
+    .player-name {
+        font-size: 0.8em;
     }
 
     .current-player {

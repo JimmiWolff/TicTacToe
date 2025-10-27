@@ -9,3 +9,7 @@ yarn-error.log*
 # Azure deployment files
 .deployment
 deploy.cmd
+
+# Capacitor/Android build files
+android/
+www/

@@ -18,6 +18,11 @@ npm run build  # outputs: "No build step required"
 
 # No tests currently configured
 npm test      # outputs: "No tests specified"
+
+# Android app development (Capacitor)
+npm run android:copy    # Copy web files to www/ folder
+npm run android:sync    # Sync web files to Android project
+npm run android:open    # Open Android project in Android Studio
 ```
 
 ## Architecture Overview
@@ -120,6 +125,8 @@ The application is deployed on Railway with automatic deployments from GitHub:
 - `highscore.js`: User statistics and leaderboard service
 - `AUTH0_SETUP.md`: Detailed Auth0 configuration instructions
 - `DEPLOYMENT.md`: Azure deployment guide with multiple deployment options
+- `ANDROID_SETUP.md`: Complete guide for building and publishing Android app
+- `capacitor.config.json`: Capacitor configuration for mobile app
 
 ## Socket.IO Events
 

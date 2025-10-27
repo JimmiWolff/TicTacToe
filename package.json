@@ -8,7 +8,10 @@
     "dev": "node server.js",
     "build": "echo 'No build step required'",
     "postinstall": "echo 'Installation complete'",
-    "test": "echo 'No tests specified'"
+    "test": "echo 'No tests specified'",
+    "android:copy": "cp index.html style.css script.js auth0-spa-js.js www/",
+    "android:sync": "npm run android:copy && npx cap sync android",
+    "android:open": "npx cap open android"
   },
   "engines": {
     "node": ">=18.0.0",
@@ -16,6 +19,9 @@
   },
   "dependencies": {
     "@auth0/auth0-spa-js": "^2.4.1",
+    "@capacitor/android": "^7.4.4",
+    "@capacitor/cli": "^7.4.4",
+    "@capacitor/core": "^7.4.4",
     "@sentry/browser": "^10.20.0",
     "@sentry/node": "^10.20.0",
     "@sentry/profiling-node": "^10.20.0",

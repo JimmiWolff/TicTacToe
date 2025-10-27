@@ -1,0 +1,12 @@
+{
+  "appId": "com.tictactoe.multiplayer",
+  "appName": "Tic Tac Toe",
+  "webDir": "www",
+  "server": {
+    "url": "https://tictactoe-production-5ab6.up.railway.app",
+    "cleartext": true
+  },
+  "android": {
+    "allowMixedContent": true
+  }
+}

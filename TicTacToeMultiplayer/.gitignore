@@ -1,0 +1,36 @@
+# Xcode
+*.xcuserstate
+*.xcworkspace
+xcuserdata/
+build/
+DerivedData/
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Packages/
+Package.resolved
+
+# CocoaPods
+Pods/
+
+# Carthage
+Carthage/Build/
+
+# macOS
+.DS_Store
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# IDE
+*.xccheckout
+*.moved-aside
+
+# Playgrounds
+timeline.xctimeline
+playground.xcworkspace
+
+# Crashlytics
+Fabric.properties

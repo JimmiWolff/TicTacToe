@@ -36,6 +36,17 @@ struct RoomSelectionView: View {
                     Text("Welcome, \(authViewModel.username)!")
                         .font(.system(size: 20, weight: .medium))
                         .foregroundColor(.white)
+
+                    if !authViewModel.isSocketAuthenticated {
+                        HStack(spacing: 8) {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                .scaleEffect(0.8)
+                            Text("Connecting to server...")
+                                .font(.system(size: 14))
+                                .foregroundColor(.white.opacity(0.7))
+                        }
+                    }
                 }
                 .padding(.top, 10)
 
@@ -50,7 +61,6 @@ struct RoomSelectionView: View {
                         ForEach(gameViewModel.activeGames) { game in
                             ActiveGameRow(game: game) {
                                 gameViewModel.rejoinGame(roomCode: game.roomCode)
-                                authenticateAfterJoin()
                             } onDelete: {
                                 if let userId = authViewModel.userId {
                                     gameViewModel.deleteGame(roomCode: game.roomCode, userId: userId)
@@ -64,7 +74,6 @@ struct RoomSelectionView: View {
                 // Quick Play button
                 Button(action: {
                     gameViewModel.quickPlay()
-                    authenticateAfterJoin()
                 }) {
                     HStack(spacing: 12) {
                         if gameViewModel.isJoiningRoom {
@@ -83,14 +92,14 @@ struct RoomSelectionView: View {
                     .foregroundColor(Color(hex: "#667eea"))
                     .cornerRadius(12)
                 }
-                .disabled(gameViewModel.isJoiningRoom)
+                .disabled(!authViewModel.isSocketAuthenticated || gameViewModel.isJoiningRoom)
+                .opacity(authViewModel.isSocketAuthenticated ? 1.0 : 0.6)
                 .padding(.horizontal)
                 .padding(.top, 20)
 
                 // Create New Game
                 Button(action: {
                     gameViewModel.createRoom()
-                    authenticateAfterJoin()
                 }) {
                     HStack(spacing: 12) {
                         Image(systemName: "plus.circle.fill")
@@ -108,7 +117,8 @@ struct RoomSelectionView: View {
                             .stroke(Color.white.opacity(0.3), lineWidth: 1)
                     )
                 }
-                .disabled(gameViewModel.isJoiningRoom)
+                .disabled(!authViewModel.isSocketAuthenticated || gameViewModel.isJoiningRoom)
+                .opacity(authViewModel.isSocketAuthenticated ? 1.0 : 0.6)
                 .padding(.horizontal)
 
                 // Join by Code
@@ -158,7 +168,6 @@ struct RoomSelectionView: View {
 
                             Button(action: {
                                 gameViewModel.joinRoom(code: roomCode)
-                                authenticateAfterJoin()
                             }) {
                                 Text("Join")
                                     .font(.system(size: 16, weight: .semibold))
@@ -168,7 +177,7 @@ struct RoomSelectionView: View {
                                     .background(Color.white)
                                     .cornerRadius(10)
                             }
-                            .disabled(roomCode.isEmpty || gameViewModel.isJoiningRoom)
+                            .disabled(!authViewModel.isSocketAuthenticated || roomCode.isEmpty || gameViewModel.isJoiningRoom)
                         }
                         .padding(.horizontal)
                         .transition(.opacity.combined(with: .move(edge: .top)))
@@ -222,12 +231,6 @@ struct RoomSelectionView: View {
         }
     }
 
-    private func authenticateAfterJoin() {
-        // Small delay to ensure room is joined before authenticating
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            authViewModel.authenticateSocket()
-        }
-    }
 }
 
 struct ActiveGameRow: View {

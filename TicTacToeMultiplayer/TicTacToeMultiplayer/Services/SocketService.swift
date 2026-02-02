@@ -27,14 +27,12 @@ class SocketService: ObservableObject {
     @Published var isConnected = false
 
     private init() {
-        let serverURL = URL(string: "https://tic-tac-toe-multiplayer-production.up.railway.app")!
+        let serverURL = URL(string: "https://play.tictactoe.dk")!
         manager = SocketManager(socketURL: serverURL, config: [
-            .log(false),
-            .compress,
-            .forceWebsockets(true),
+            .log(true),
             .reconnects(true),
-            .reconnectAttempts(10),
-            .reconnectWait(3)
+            .reconnectAttempts(5),
+            .reconnectWait(5)
         ])
         socket = manager.defaultSocket
 

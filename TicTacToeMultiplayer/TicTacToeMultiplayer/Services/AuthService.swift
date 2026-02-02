@@ -28,7 +28,6 @@ class AuthService: ObservableObject {
             let credentials = try await Auth0
                 .webAuth()
                 .scope("openid profile email")
-                .audience("https://tictactoe.com/api")
                 .start()
 
             await MainActor.run {
@@ -60,8 +59,13 @@ class AuthService: ObservableObject {
 
     private func handleCredentials(_ credentials: Credentials) {
         _ = credentialsManager.store(credentials: credentials)
-        accessToken = credentials.accessToken
-        userId = credentials.idToken.flatMap { decodeUserId(from: $0) }
+        // Use ID token for socket authentication (always a JWT)
+        // Access token without audience is opaque and can't be decoded
+        let token = credentials.idToken
+        print("AuthService: Setting ID token, length: \(token.count)")
+        accessToken = token
+        userId = decodeUserId(from: token)
+        print("AuthService: Decoded userId: \(userId ?? "nil")")
         isAuthenticated = true
 
         // Fetch user profile
@@ -80,8 +84,9 @@ class AuthService: ObservableObject {
             DispatchQueue.main.async {
                 switch result {
                 case .success(let credentials):
-                    self?.accessToken = credentials.accessToken
-                    self?.userId = credentials.idToken.flatMap { self?.decodeUserId(from: $0) }
+                    // Use ID token for socket authentication (always a JWT)
+                    self?.accessToken = credentials.idToken
+                    self?.userId = self?.decodeUserId(from: credentials.idToken)
                     self?.isAuthenticated = true
                     Task {
                         await self?.fetchUserProfile()
@@ -169,7 +174,8 @@ class AuthService: ObservableObject {
             credentialsManager.credentials { result in
                 switch result {
                 case .success(let credentials):
-                    continuation.resume(returning: credentials.accessToken)
+                    // Use ID token for socket authentication
+                    continuation.resume(returning: credentials.idToken)
                 case .failure:
                     continuation.resume(returning: nil)
                 }

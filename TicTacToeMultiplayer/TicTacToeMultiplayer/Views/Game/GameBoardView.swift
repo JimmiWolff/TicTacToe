@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct GameBoardView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
@@ -259,7 +260,6 @@ struct GameCellView: View {
             }
         }
         .aspectRatio(1, contentMode: .fit)
-        .sensoryFeedback(.impact(weight: .light), trigger: value)
     }
 }
 

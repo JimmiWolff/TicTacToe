@@ -4,6 +4,7 @@ import Combine
 @MainActor
 class AuthViewModel: ObservableObject {
     @Published var isAuthenticated = false
+    @Published var isSocketAuthenticated = false
     @Published var needsUsername = false
     @Published var username: String = ""
     @Published var userId: String?
@@ -27,6 +28,32 @@ class AuthViewModel: ObservableObject {
                 self?.isAuthenticated = isAuth
                 if isAuth {
                     self?.checkUsername()
+                    self?.connectSocket()
+                }
+            }
+            .store(in: &cancellables)
+
+        // Listen for socket connection and authenticate immediately
+        socketService.connectionStatus
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] (isConnected: Bool) in
+                print("AuthViewModel: Socket connection status changed: \(isConnected)")
+                if isConnected {
+                    self?.authenticateSocket()
+                } else {
+                    self?.isSocketAuthenticated = false
+                }
+            }
+            .store(in: &cancellables)
+
+        // Also listen for access token changes - authenticate when token becomes available
+        authService.$accessToken
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] (token: String?) in
+                print("AuthViewModel: Token changed, hasToken: \(token != nil), socketConnected: \(self?.socketService.isConnected ?? false), socketAuth: \(self?.isSocketAuthenticated ?? false)")
+                if token != nil && self?.socketService.isConnected == true && self?.isSocketAuthenticated == false {
+                    print("AuthViewModel: Triggering authentication from token change")
+                    self?.authenticateSocket()
                 }
             }
             .store(in: &cancellables)
@@ -49,8 +76,11 @@ class AuthViewModel: ObservableObject {
         socketService.loginResponse
             .receive(on: DispatchQueue.main)
             .sink { [weak self] response in
+                print("AuthViewModel: Received loginResponse - success: \(response.success), message: \(response.message ?? "nil")")
                 self?.isLoading = false
                 if response.success {
+                    self?.isSocketAuthenticated = true
+                    print("AuthViewModel: Socket authenticated successfully")
                     if let newUsername = response.username {
                         self?.username = newUsername
                         self?.authService.saveUsername(newUsername)
@@ -58,6 +88,7 @@ class AuthViewModel: ObservableObject {
                     self?.needsUsername = false
                 } else {
                     self?.errorMessage = response.message
+                    print("AuthViewModel: Socket authentication failed: \(response.message ?? "unknown error")")
                 }
             }
             .store(in: &cancellables)
@@ -77,6 +108,7 @@ class AuthViewModel: ObservableObject {
     }
 
     private func checkExistingSession() {
+        print("AuthViewModel: Checking existing session, isAuthenticated: \(authService.isAuthenticated)")
         if authService.isAuthenticated {
             isAuthenticated = true
             checkUsername()
@@ -94,7 +126,9 @@ class AuthViewModel: ObservableObject {
     }
 
     private func connectSocket() {
+        print("AuthViewModel: connectSocket called, isConnected: \(socketService.isConnected)")
         if !socketService.isConnected {
+            print("AuthViewModel: Connecting socket...")
             socketService.connect()
         }
     }
@@ -120,6 +154,7 @@ class AuthViewModel: ObservableObject {
             socketService.disconnect()
             await authService.logout()
             isLoading = false
+            isSocketAuthenticated = false
             needsUsername = false
             username = ""
         }
@@ -159,7 +194,11 @@ class AuthViewModel: ObservableObject {
     }
 
     func authenticateSocket() {
-        guard let token = authService.accessToken else { return }
+        guard let token = authService.accessToken else {
+            print("AuthViewModel: No token available for socket authentication")
+            return
+        }
+        print("AuthViewModel: Sending socket login with username: \(username.isEmpty ? "nil" : username)")
         socketService.login(token: token, customUsername: username.isEmpty ? nil : username)
     }
 }

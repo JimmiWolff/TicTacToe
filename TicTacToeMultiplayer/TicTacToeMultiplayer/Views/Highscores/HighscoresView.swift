@@ -65,9 +65,6 @@ struct HighscoresView: View {
                     .foregroundColor(.white)
                 }
             }
-            .toolbarColorScheme(.dark, for: .navigationBar)
-            .toolbarBackground(Color(hex: "#667eea"), for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
         }
         .onAppear {
             gameViewModel.fetchHighscores()

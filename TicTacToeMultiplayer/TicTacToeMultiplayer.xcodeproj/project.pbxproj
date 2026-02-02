@@ -25,6 +25,7 @@
 		A1000001200000000000016 /* Auth0.plist in Resources */ = {isa = PBXBuildFile; fileRef = A1000001100000000000016 /* Auth0.plist */; };
 		A1000001200000000000017 /* SocketIO in Frameworks */ = {isa = PBXBuildFile; productRef = A1000003100000000000001 /* SocketIO */; };
 		A1000001200000000000018 /* Auth0 in Frameworks */ = {isa = PBXBuildFile; productRef = A1000003100000000000002 /* Auth0 */; };
+		A1000001200000000000019 /* APIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000001100000000000018 /* APIService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -46,6 +47,7 @@
 		A1000001100000000000015 /* HighscoresView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HighscoresView.swift; sourceTree = "<group>"; };
 		A1000001100000000000016 /* Auth0.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Auth0.plist; sourceTree = "<group>"; };
 		A1000001100000000000017 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A1000001100000000000018 /* APIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -127,6 +129,7 @@
 			children = (
 				A1000001100000000000006 /* SocketService.swift */,
 				A1000001100000000000007 /* AuthService.swift */,
+				A1000001100000000000018 /* APIService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -230,8 +233,8 @@
 			);
 			mainGroup = A1000002200000000000001;
 			packageReferences = (
-				A1000003000000000000001 /* XCRemoteSwiftPackageReference "socket.io-client-swift" */,
-				A1000003000000000000002 /* XCRemoteSwiftPackageReference "Auth0.swift" */,
+				A1000003000000000000001 /* XCRemoteSwiftPackageReference "socket" */,
+				A1000003000000000000002 /* XCRemoteSwiftPackageReference "Auth0" */,
 			);
 			productRefGroup = A1000002200000000000003 /* Products */;
 			projectDirPath = "";
@@ -273,6 +276,7 @@
 				A1000001200000000000013 /* GameBoardView.swift in Sources */,
 				A1000001200000000000014 /* SettingsView.swift in Sources */,
 				A1000001200000000000015 /* HighscoresView.swift in Sources */,
+				A1000001200000000000019 /* APIService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -405,7 +409,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = 39X9SCCPSV;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = TicTacToeMultiplayer/Info.plist;
@@ -436,7 +440,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = 39X9SCCPSV;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = TicTacToeMultiplayer/Info.plist;
@@ -484,7 +488,7 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		A1000003000000000000001 /* XCRemoteSwiftPackageReference "socket.io-client-swift" */ = {
+		A1000003000000000000001 /* XCRemoteSwiftPackageReference "socket" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/socketio/socket.io-client-swift";
 			requirement = {
@@ -492,7 +496,7 @@
 				minimumVersion = 16.1.0;
 			};
 		};
-		A1000003000000000000002 /* XCRemoteSwiftPackageReference "Auth0.swift" */ = {
+		A1000003000000000000002 /* XCRemoteSwiftPackageReference "Auth0" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/auth0/Auth0.swift";
 			requirement = {
@@ -505,12 +509,12 @@
 /* Begin XCSwiftPackageProductDependency section */
 		A1000003100000000000001 /* SocketIO */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = A1000003000000000000001 /* XCRemoteSwiftPackageReference "socket.io-client-swift" */;
+			package = A1000003000000000000001 /* XCRemoteSwiftPackageReference "socket" */;
 			productName = SocketIO;
 		};
 		A1000003100000000000002 /* Auth0 */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = A1000003000000000000002 /* XCRemoteSwiftPackageReference "Auth0.swift" */;
+			package = A1000003000000000000002 /* XCRemoteSwiftPackageReference "Auth0" */;
 			productName = Auth0;
 		};
 /* End XCSwiftPackageProductDependency section */

@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct SettingsView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
@@ -112,9 +113,6 @@ struct SettingsView: View {
                     .foregroundColor(.white)
                 }
             }
-            .toolbarColorScheme(.dark, for: .navigationBar)
-            .toolbarBackground(Color(hex: "#667eea"), for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
         }
         .onAppear {
             updateColorsFromState()
@@ -168,7 +166,7 @@ struct ColorPickerRow: View {
             if canEdit {
                 ColorPicker("", selection: $color)
                     .labelsHidden()
-                    .onChange(of: color) { _, newValue in
+                    .onChange(of: color) { newValue in
                         onChange(newValue)
                     }
             } else {

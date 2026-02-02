@@ -25,6 +25,7 @@ class GameViewModel: ObservableObject {
     @Published var activeGames: [ActiveGame] = []
 
     private let socketService = SocketService.shared
+    private let authService = AuthService.shared
     private var cancellables = Set<AnyCancellable>()
 
     init() {
@@ -39,6 +40,11 @@ class GameViewModel: ObservableObject {
                 self?.isJoiningRoom = false
                 if response.success {
                     self?.currentRoom = response.roomCode
+                    // Re-send login after joining room to be added as a player
+                    // (Same pattern as web client)
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        self?.authenticateToRoom()
+                    }
                 } else {
                     self?.errorMessage = response.message
                 }
@@ -151,7 +157,7 @@ class GameViewModel: ObservableObject {
         gameState.scores = result.scores
         gameState.gameActive = false
 
-        if let winner = result.winner, let winnerName = result.winnerName {
+        if result.winner != nil, let winnerName = result.winnerName {
             toastMessage = "\(winnerName) wins!"
         } else if result.draw == true {
             toastMessage = "It's a draw!"
@@ -170,9 +176,18 @@ class GameViewModel: ObservableObject {
 
     func createRoom() {
         isJoiningRoom = true
-        // Generate a random room code
-        let code = String((0..<6).map { _ in "ABCDEFGHIJKLMNOPQRSTUVWXYZ".randomElement()! })
-        socketService.joinRoom(roomCode: code)
+
+        Task {
+            do {
+                // Call API to create a unique room code
+                let roomCode = try await APIService.shared.createRoom()
+                // Then join that room via socket
+                socketService.joinRoom(roomCode: roomCode)
+            } catch {
+                isJoiningRoom = false
+                errorMessage = error.localizedDescription
+            }
+        }
     }
 
     func joinRoom(code: String) {
@@ -307,5 +322,17 @@ class GameViewModel: ObservableObject {
             hexColor = gameState.pieceColors?.O ?? "#3498db"
         }
         return Color(hex: hexColor)
+    }
+
+    // MARK: - Room Authentication
+
+    private func authenticateToRoom() {
+        guard let token = authService.accessToken else {
+            print("GameViewModel: No token for room authentication")
+            return
+        }
+        let username = authService.savedUsername
+        print("GameViewModel: Re-authenticating to room with username: \(username ?? "nil")")
+        socketService.login(token: token, customUsername: username)
     }
 }

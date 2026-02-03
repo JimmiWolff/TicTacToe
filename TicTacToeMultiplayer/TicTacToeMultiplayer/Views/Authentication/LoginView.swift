@@ -8,14 +8,13 @@ struct LoginView: View {
             Spacer()
 
             // Logo/Title
-            VStack(spacing: 16) {
+            VStack(spacing: 4) {
+                Text("The Wolff")
+                    .font(.system(size: 20, weight: .medium, design: .rounded))
+                    .foregroundColor(.white.opacity(0.8))
                 Text("Tic Tac Toe")
                     .font(.system(size: 42, weight: .bold, design: .rounded))
                     .foregroundColor(.white)
-
-                Text("Multiplayer")
-                    .font(.system(size: 24, weight: .medium, design: .rounded))
-                    .foregroundColor(.white.opacity(0.8))
             }
 
             // Game preview icon

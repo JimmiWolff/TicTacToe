@@ -10,22 +10,29 @@ struct RoomSelectionView: View {
         ScrollView {
             VStack(spacing: 24) {
                 // Header
-                HStack {
-                    Text("Tic Tac Toe")
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
-
-                    Spacer()
-
-                    Button(action: {
-                        authViewModel.logout()
-                    }) {
-                        Image(systemName: "rectangle.portrait.and.arrow.right")
-                            .font(.system(size: 18))
+                ZStack {
+                    VStack(spacing: 2) {
+                        Text("The Wolff")
+                            .font(.system(size: 16, weight: .medium, design: .rounded))
                             .foregroundColor(.white.opacity(0.8))
-                            .padding(12)
-                            .background(Color.white.opacity(0.1))
-                            .clipShape(Circle())
+                        Text("Tic Tac Toe")
+                            .font(.system(size: 28, weight: .bold, design: .rounded))
+                            .foregroundColor(.white)
+                    }
+
+                    HStack {
+                        Spacer()
+
+                        Button(action: {
+                            authViewModel.logout()
+                        }) {
+                            Image(systemName: "rectangle.portrait.and.arrow.right")
+                                .font(.system(size: 18))
+                                .foregroundColor(.white.opacity(0.8))
+                                .padding(12)
+                                .background(Color.white.opacity(0.1))
+                                .clipShape(Circle())
+                        }
                     }
                 }
                 .padding(.horizontal)

@@ -55,35 +55,60 @@ class SocketService: ObservableObject {
         socket.on(clientEvent: .error) { [weak self] data, _ in
             if let error = data.first {
                 print("Socket error: \(error)")
-                self?.errorReceived.send("Connection error")
+                // Don't show generic connection errors to user - they're often transient
+                // The socket will auto-reconnect
             }
         }
 
         socket.on("roomJoined") { [weak self] data, _ in
-            guard let dict = data.first as? [String: Any],
-                  let jsonData = try? JSONSerialization.data(withJSONObject: dict),
-                  let response = try? JSONDecoder().decode(RoomJoinedResponse.self, from: jsonData) else {
+            guard let dict = data.first as? [String: Any] else {
+                print("SocketService: roomJoined - failed to cast data to dictionary")
                 return
             }
-            self?.roomJoined.send(response)
+
+            do {
+                let jsonData = try JSONSerialization.data(withJSONObject: dict)
+                let response = try JSONDecoder().decode(RoomJoinedResponse.self, from: jsonData)
+                print("SocketService: roomJoined - success, room: \(response.roomCode)")
+                self?.roomJoined.send(response)
+            } catch {
+                print("SocketService: roomJoined - decode error: \(error)")
+                print("SocketService: roomJoined - raw data: \(dict)")
+            }
         }
 
         socket.on("loginResponse") { [weak self] data, _ in
-            guard let dict = data.first as? [String: Any],
-                  let jsonData = try? JSONSerialization.data(withJSONObject: dict),
-                  let response = try? JSONDecoder().decode(LoginResponse.self, from: jsonData) else {
+            guard let dict = data.first as? [String: Any] else {
+                print("SocketService: loginResponse - failed to cast data to dictionary")
                 return
             }
-            self?.loginResponse.send(response)
+
+            do {
+                let jsonData = try JSONSerialization.data(withJSONObject: dict)
+                let response = try JSONDecoder().decode(LoginResponse.self, from: jsonData)
+                print("SocketService: loginResponse - success: \(response.success), message: \(response.message)")
+                self?.loginResponse.send(response)
+            } catch {
+                print("SocketService: loginResponse - decode error: \(error)")
+                print("SocketService: loginResponse - raw data: \(dict)")
+            }
         }
 
         socket.on("gameStateUpdate") { [weak self] data, _ in
-            guard let dict = data.first as? [String: Any],
-                  let jsonData = try? JSONSerialization.data(withJSONObject: dict),
-                  let state = try? JSONDecoder().decode(GameState.self, from: jsonData) else {
+            guard let dict = data.first as? [String: Any] else {
+                print("SocketService: gameStateUpdate - failed to cast data to dictionary")
                 return
             }
-            self?.gameStateUpdate.send(state)
+
+            do {
+                let jsonData = try JSONSerialization.data(withJSONObject: dict)
+                let state = try JSONDecoder().decode(GameState.self, from: jsonData)
+                print("SocketService: gameStateUpdate - success, \(state.players.count) players, phase: \(state.gamePhase)")
+                self?.gameStateUpdate.send(state)
+            } catch {
+                print("SocketService: gameStateUpdate - decode error: \(error)")
+                print("SocketService: gameStateUpdate - raw data: \(dict)")
+            }
         }
 
         socket.on("gameOver") { [weak self] data, _ in
@@ -114,21 +139,37 @@ class SocketService: ObservableObject {
         }
 
         socket.on("highscoresUpdate") { [weak self] data, _ in
-            guard let dict = data.first as? [String: Any],
-                  let jsonData = try? JSONSerialization.data(withJSONObject: dict),
-                  let response = try? JSONDecoder().decode(HighscoresResponse.self, from: jsonData) else {
+            guard let dict = data.first as? [String: Any] else {
+                print("SocketService: highscoresUpdate - failed to cast data to dictionary")
                 return
             }
-            self?.highscoresUpdate.send(response)
+
+            do {
+                let jsonData = try JSONSerialization.data(withJSONObject: dict)
+                let response = try JSONDecoder().decode(HighscoresResponse.self, from: jsonData)
+                print("SocketService: highscoresUpdate - success, \(response.topPlayers.count) players")
+                self?.highscoresUpdate.send(response)
+            } catch {
+                print("SocketService: highscoresUpdate - decode error: \(error)")
+                print("SocketService: highscoresUpdate - raw data: \(dict)")
+            }
         }
 
         socket.on("playerStatsUpdate") { [weak self] data, _ in
-            guard let dict = data.first as? [String: Any],
-                  let jsonData = try? JSONSerialization.data(withJSONObject: dict),
-                  let response = try? JSONDecoder().decode(PlayerStatsResponse.self, from: jsonData) else {
+            guard let dict = data.first as? [String: Any] else {
+                print("SocketService: playerStatsUpdate - failed to cast data to dictionary")
                 return
             }
-            self?.playerStatsUpdate.send(response)
+
+            do {
+                let jsonData = try JSONSerialization.data(withJSONObject: dict)
+                let response = try JSONDecoder().decode(PlayerStatsResponse.self, from: jsonData)
+                print("SocketService: playerStatsUpdate - success")
+                self?.playerStatsUpdate.send(response)
+            } catch {
+                print("SocketService: playerStatsUpdate - decode error: \(error)")
+                print("SocketService: playerStatsUpdate - raw data: \(dict)")
+            }
         }
 
         socket.on("myGamesUpdate") { [weak self] data, _ in
@@ -224,10 +265,12 @@ class SocketService: ObservableObject {
     }
 
     func getHighscores() {
+        print("SocketService: getHighscores called, isConnected: \(isConnected)")
         socket.emit("getHighscores")
     }
 
     func getPlayerStats(userId: String) {
+        print("SocketService: getPlayerStats called for userId: \(userId), isConnected: \(isConnected)")
         socket.emit("getPlayerStats", ["userId": userId])
     }
 

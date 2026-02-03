@@ -136,6 +136,22 @@ class GameViewModel: ObservableObject {
             }
             .store(in: &cancellables)
 
+        // Delete game response
+        socketService.deleteGameResponse
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] response in
+                if response.success {
+                    self?.toastMessage = response.message
+                    // Refresh the games list after successful deletion
+                    if let userId = self?.authService.userId {
+                        self?.fetchMyGames(userId: userId)
+                    }
+                } else {
+                    self?.errorMessage = response.message
+                }
+            }
+            .store(in: &cancellables)
+
         // Errors
         socketService.errorReceived
             .receive(on: DispatchQueue.main)

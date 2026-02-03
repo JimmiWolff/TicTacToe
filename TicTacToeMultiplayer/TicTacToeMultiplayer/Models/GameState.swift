@@ -90,7 +90,7 @@ struct LeaderboardEntry: Codable, Identifiable {
     var wins: Int
     var losses: Int
     var draws: Int
-    var winRate: Double?
+    var winRate: Double
 
     enum CodingKeys: String, CodingKey {
         case oddsId = "_id"
@@ -100,6 +100,24 @@ struct LeaderboardEntry: Codable, Identifiable {
         case losses
         case draws
         case winRate
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        oddsId = try container.decodeIfPresent(String.self, forKey: .oddsId)
+        oddsUsername = try container.decodeIfPresent(String.self, forKey: .oddsUsername)
+        username = try container.decodeIfPresent(String.self, forKey: .username) ?? "Unknown"
+        wins = try container.decodeIfPresent(Int.self, forKey: .wins) ?? 0
+        losses = try container.decodeIfPresent(Int.self, forKey: .losses) ?? 0
+        draws = try container.decodeIfPresent(Int.self, forKey: .draws) ?? 0
+        // winRate could be Int, Double, or null - handle all cases
+        if let intRate = try? container.decodeIfPresent(Int.self, forKey: .winRate) {
+            winRate = Double(intRate)
+        } else if let doubleRate = try? container.decodeIfPresent(Double.self, forKey: .winRate) {
+            winRate = doubleRate
+        } else {
+            winRate = 0
+        }
     }
 }
 
@@ -111,6 +129,32 @@ struct PlayerStats: Codable {
 
     static var empty: PlayerStats {
         PlayerStats(wins: 0, losses: 0, draws: 0, winRate: 0)
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case wins, losses, draws, winRate
+    }
+
+    init(wins: Int, losses: Int, draws: Int, winRate: Double) {
+        self.wins = wins
+        self.losses = losses
+        self.draws = draws
+        self.winRate = winRate
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        wins = try container.decodeIfPresent(Int.self, forKey: .wins) ?? 0
+        losses = try container.decodeIfPresent(Int.self, forKey: .losses) ?? 0
+        draws = try container.decodeIfPresent(Int.self, forKey: .draws) ?? 0
+        // winRate could be Int, Double, or null - handle all cases
+        if let intRate = try? container.decodeIfPresent(Int.self, forKey: .winRate) {
+            winRate = Double(intRate)
+        } else if let doubleRate = try? container.decodeIfPresent(Double.self, forKey: .winRate) {
+            winRate = doubleRate
+        } else {
+            winRate = 0
+        }
     }
 }
 

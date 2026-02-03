@@ -88,7 +88,7 @@ struct PersonalStatsCard: View {
                 StatItem(label: "Wins", value: "\(stats.wins)", color: .green)
                 StatItem(label: "Losses", value: "\(stats.losses)", color: .red)
                 StatItem(label: "Draws", value: "\(stats.draws)", color: .gray)
-                StatItem(label: "Win Rate", value: String(format: "%.0f%%", stats.winRate * 100), color: .yellow)
+                StatItem(label: "Win Rate", value: String(format: "%.0f%%", stats.winRate), color: .yellow)
             }
         }
         .padding()
@@ -148,7 +148,7 @@ struct LeaderboardRow: View {
 
             // Win rate
             VStack(alignment: .trailing, spacing: 4) {
-                Text(String(format: "%.0f%%", (entry.winRate ?? 0) * 100))
+                Text(String(format: "%.0f%%", entry.winRate ?? 0))
                     .font(.system(size: 18, weight: .bold))
                     .foregroundColor(.yellow)
 

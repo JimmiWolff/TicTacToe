@@ -1337,6 +1337,7 @@ app.use((err, req, res, next) => {
 // Railway and Azure-friendly port configuration
 const PORT = process.env.PORT || process.env.WEBSITES_PORT || 3000;
 const HOST = process.env.RAILWAY_STATIC_URL ? '0.0.0.0' : (process.env.WEBSITE_HOSTNAME || '0.0.0.0');
+// Force deployment trigger
 
 // Enhanced error handling for Azure
 server.on('error', (error) => {

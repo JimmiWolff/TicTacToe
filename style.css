@@ -530,6 +530,19 @@ button {
     color: #333;
 }
 
+.leave-game-btn {
+    background: #3498db;
+    color: white;
+    padding: 8px 16px;
+    font-size: 0.9em;
+    border: 2px solid transparent;
+}
+
+.leave-game-btn:hover {
+    background: #2980b9;
+    transform: translateY(-2px);
+}
+
 #logoutBtn {
     background: #e74c3c;
     color: white;

@@ -525,6 +525,68 @@ setTimeout(() => {
 io.on('connection', (socket) => {
     console.log(`User connected: ${socket.id}`);
 
+    // Handle leaving a room
+    socket.on('leaveRoom', async (data) => {
+        try {
+            const { roomCode } = data;
+
+            if (!roomCode) {
+                socket.emit('error', { message: 'Room code is required' });
+                return;
+            }
+
+            const room = rooms.get(roomCode);
+
+            if (room) {
+                // Remove player from room
+                const leavingPlayer = room.players.find(p => p.socketId === socket.id);
+                room.players = room.players.filter(p => p.socketId !== socket.id);
+
+                // Leave the socket room
+                socket.leave(roomCode);
+
+                // Clear player's room info
+                socket.playerRoom = null;
+                socket.player = null;
+
+                // Notify other players
+                if (leavingPlayer) {
+                    socket.to(roomCode).emit('playerDisconnected', {
+                        username: leavingPlayer.username || 'A player'
+                    });
+                }
+
+                // Update game state for remaining players
+                if (room.players.length > 0) {
+                    room.lastActivity = new Date();
+                    await saveGameState(room);
+                    io.to(roomCode).emit('gameStateUpdate', {
+                        players: room.players,
+                        board: room.board,
+                        currentPlayer: room.currentPlayer,
+                        gameActive: room.gameActive,
+                        scores: room.scores,
+                        piecesPlaced: room.piecesPlaced,
+                        gamePhase: room.gamePhase,
+                        maxPieces: room.maxPieces,
+                        pieceColors: room.pieceColors
+                    });
+                } else {
+                    // If room is empty, delete it
+                    rooms.delete(roomCode);
+                    await gameStateService.deleteGame(roomCode);
+                    console.log(`Room ${roomCode} deleted (empty after player left)`);
+                }
+
+                console.log(`Player ${leavingPlayer?.username || socket.id} left room ${roomCode}`);
+            }
+        } catch (error) {
+            console.error('Error leaving room:', error);
+            Sentry.captureException(error);
+            socket.emit('error', { message: 'Failed to leave room' });
+        }
+    });
+
     // Handle room joining
     socket.on('joinRoom', async (data) => {
         try {

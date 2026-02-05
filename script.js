@@ -66,6 +66,7 @@ class TicTacToeMultiplayer {
         this.loginStatus = document.getElementById('loginStatus');
         this.gameContainer = document.getElementById('gameContainer');
         this.logoutBtn = document.getElementById('logoutBtn');
+        this.leaveGameBtn = document.getElementById('leaveGameBtn');
 
         // Auth0 and registration elements
         this.auth0LoginBtn = document.getElementById('auth0LoginBtn');
@@ -499,6 +500,9 @@ class TicTacToeMultiplayer {
         // Logout button
         this.logoutBtn.addEventListener('click', () => this.handleLogout());
 
+        // Leave game button
+        this.leaveGameBtn.addEventListener('click', () => this.handleLeaveGame());
+
         // Game cells
         this.cells.forEach((cell, index) => {
             cell.addEventListener('click', () => this.handleCellClick(index));
@@ -514,6 +518,26 @@ class TicTacToeMultiplayer {
         });
     }
 
+
+    handleLeaveGame() {
+        // Confirm if game is active
+        if (this.gameState.gameActive && this.gameState.players.length === 2) {
+            const confirmed = confirm('Are you sure you want to leave this game? The game will continue without you.');
+            if (!confirmed) return;
+        }
+
+        // Emit leave-room event to server
+        if (this.currentRoom) {
+            this.socket.emit('leaveRoom', { roomCode: this.currentRoom });
+        }
+
+        // Reset local state
+        this.currentRoom = null;
+        this.roomCode = null;
+
+        // Show room selection modal
+        this.showRoomModal();
+    }
 
     async handleLogout() {
         this.socket.disconnect();
@@ -1328,6 +1352,7 @@ class TicTacToeMultiplayer {
         this.loginModal.style.display = 'none';
         this.usernameModal.style.display = 'none';
         this.registrationModal.style.display = 'none';
+        this.gameContainer.style.display = 'none';
 
         // Load user's active games if logged in
         if (this.currentUser && this.currentUser.userId) {

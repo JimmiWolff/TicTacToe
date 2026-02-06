@@ -41,5 +41,8 @@
   ],
   "author": "JimmiWolff",
   "license": "MIT",
-  "homepage": "https://github.com/JimmiWolff/TicTacToe#readme"
+  "homepage": "https://github.com/JimmiWolff/TicTacToe#readme",
+  "devDependencies": {
+    "snyk": "^1.1302.1"
+  }
 }

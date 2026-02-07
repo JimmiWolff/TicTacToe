@@ -71,19 +71,10 @@ class AuthService: ObservableObject {
     }
 
     func logout() async {
-        do {
-            if authProvider == "auth0" {
-                try await Auth0.webAuth().clearSession()
-            }
-            // For Apple, just clear local credentials
-            await MainActor.run {
-                self.clearCredentials()
-            }
-        } catch {
-            await MainActor.run {
-                self.errorMessage = "Logout failed: \(error.localizedDescription)"
-                print("Logout error: \(error)")
-            }
+        // Simply clear local credentials without calling Auth0 web logout
+        // This avoids Auth0 configuration issues and works for both Auth0 and Apple
+        await MainActor.run {
+            self.clearCredentials()
         }
     }
 

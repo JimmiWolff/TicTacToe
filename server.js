@@ -729,6 +729,19 @@ io.on('connection', (socket) => {
                                decoded.sub ||
                                'Unknown User';
 
+                // Truncate username to maximum 12 characters for better display
+                // If it's an email, use the part before @ first
+                if (!customUsername && !storedUsername) {
+                    if (actualUsername.includes('@')) {
+                        // Extract username part from email (before @)
+                        actualUsername = actualUsername.split('@')[0];
+                    }
+                    // Truncate to 12 characters
+                    if (actualUsername.length > 12) {
+                        actualUsername = actualUsername.substring(0, 12);
+                    }
+                }
+
                 userInfo = {
                     id: decoded.sub,
                     email: decoded.email,

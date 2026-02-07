@@ -1,6 +1,7 @@
 const { MongoClient, ServerApiVersion } = require('mongodb');
 
-const uri = "mongodb+srv://wolff13_db_user:mb0BbpNr4RAXRuMu@cluster0.d3pdxn1.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
+// Use environment variable for MongoDB URI, fallback to hardcoded for local development
+const uri = process.env.MONGODB_URI || "mongodb+srv://wolff13_db_user:mb0BbpNr4RAXRuMu@cluster0.d3pdxn1.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
 
 let client;
 let db;

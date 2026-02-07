@@ -157,6 +157,7 @@ class AuthViewModel: ObservableObject {
                 // Simple logout for guest mode
                 isGuestMode = false
                 isAuthenticated = false
+                isSocketAuthenticated = false
                 username = ""
                 userId = nil
             } else {
@@ -236,6 +237,7 @@ class AuthViewModel: ObservableObject {
         // Set guest mode - user can access basic features without authentication
         isGuestMode = true
         isAuthenticated = true // Mark as "authenticated" to pass the login screen
+        isSocketAuthenticated = true // Mark as "connected" to hide connection message (guests don't need server)
         username = "Guest"
         userId = "guest_\(UUID().uuidString)"
 

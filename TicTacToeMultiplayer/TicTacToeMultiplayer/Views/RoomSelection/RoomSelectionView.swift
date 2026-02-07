@@ -44,7 +44,8 @@ struct RoomSelectionView: View {
                         .font(.system(size: 20, weight: .medium))
                         .foregroundColor(.white)
 
-                    if !authViewModel.isSocketAuthenticated {
+                    // Only show connecting message for logged-in users (not guests)
+                    if !authViewModel.isSocketAuthenticated && !authViewModel.isGuestMode {
                         HStack(spacing: 8) {
                             ProgressView()
                                 .progressViewStyle(CircularProgressViewStyle(tint: .white))

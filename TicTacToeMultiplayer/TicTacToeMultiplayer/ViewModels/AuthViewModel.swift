@@ -11,6 +11,7 @@ class AuthViewModel: ObservableObject {
     @Published var userId: String?
     @Published var isLoading = false
     @Published var errorMessage: String?
+    @Published var isGuestMode = false
 
     private let authService = AuthService.shared
     private let socketService = SocketService.shared
@@ -152,12 +153,21 @@ class AuthViewModel: ObservableObject {
         isLoading = true
 
         Task {
-            socketService.disconnect()
-            await authService.logout()
+            if isGuestMode {
+                // Simple logout for guest mode
+                isGuestMode = false
+                isAuthenticated = false
+                username = ""
+                userId = nil
+            } else {
+                // Full logout for authenticated users
+                socketService.disconnect()
+                await authService.logout()
+                isSocketAuthenticated = false
+                needsUsername = false
+                username = ""
+            }
             isLoading = false
-            isSocketAuthenticated = false
-            needsUsername = false
-            username = ""
         }
     }
 
@@ -220,5 +230,16 @@ class AuthViewModel: ObservableObject {
             }
             isLoading = false
         }
+    }
+
+    func continueAsGuest() {
+        // Set guest mode - user can access basic features without authentication
+        isGuestMode = true
+        isAuthenticated = true // Mark as "authenticated" to pass the login screen
+        username = "Guest"
+        userId = "guest_\(UUID().uuidString)"
+
+        // Don't connect to socket in guest mode - local play only
+        print("AuthViewModel: Continuing as guest - local play mode")
     }
 }

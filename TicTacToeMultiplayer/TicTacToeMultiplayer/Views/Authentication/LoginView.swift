@@ -138,6 +138,23 @@ struct LoginView: View {
                     .padding(.horizontal)
             }
 
+            // Continue as Guest button
+            Button(action: {
+                authViewModel.continueAsGuest()
+            }) {
+                Text("Continue as Guest")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(.white.opacity(0.9))
+                    .underline()
+            }
+            .padding(.top, 8)
+
+            // Guest mode info
+            Text("Guest mode: Local play only")
+                .font(.system(size: 12, weight: .regular))
+                .foregroundColor(.white.opacity(0.6))
+                .padding(.top, 4)
+
             Spacer()
                 .frame(height: 50)
         }

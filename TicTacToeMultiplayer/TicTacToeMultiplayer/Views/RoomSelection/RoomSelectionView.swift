@@ -80,22 +80,24 @@ struct RoomSelectionView: View {
 
                 // Quick Play button
                 Button(action: {
-                    gameViewModel.quickPlay()
+                    if !authViewModel.isGuestMode {
+                        gameViewModel.quickPlay()
+                    }
                 }) {
                     HStack(spacing: 12) {
                         if gameViewModel.isJoiningRoom {
                             ProgressView()
                                 .progressViewStyle(CircularProgressViewStyle(tint: Color(hex: "#667eea")))
                         } else {
-                            Image(systemName: "bolt.fill")
+                            Image(systemName: authViewModel.isGuestMode ? "lock.fill" : "bolt.fill")
                                 .font(.system(size: 20))
                         }
-                        Text("Quick Play")
+                        Text(authViewModel.isGuestMode ? "Quick Play (Login Required)" : "Quick Play")
                             .font(.system(size: 18, weight: .semibold))
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 18)
-                    .background(Color.white)
+                    .background(authViewModel.isGuestMode ? Color.white.opacity(0.5) : Color.white)
                     .foregroundColor(Color(hex: "#667eea"))
                     .cornerRadius(12)
                 }
@@ -106,55 +108,62 @@ struct RoomSelectionView: View {
 
                 // Create New Game
                 Button(action: {
-                    gameViewModel.createRoom()
+                    if !authViewModel.isGuestMode {
+                        gameViewModel.createRoom()
+                    }
                 }) {
                     HStack(spacing: 12) {
-                        Image(systemName: "plus.circle.fill")
+                        Image(systemName: authViewModel.isGuestMode ? "lock.fill" : "plus.circle.fill")
                             .font(.system(size: 20))
-                        Text("Create New Game")
+                        Text(authViewModel.isGuestMode ? "Create New Game (Login Required)" : "Create New Game")
                             .font(.system(size: 18, weight: .semibold))
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 18)
-                    .background(Color.white.opacity(0.15))
-                    .foregroundColor(.white)
+                    .background(Color.white.opacity(authViewModel.isGuestMode ? 0.08 : 0.15))
+                    .foregroundColor(.white.opacity(authViewModel.isGuestMode ? 0.5 : 1.0))
                     .cornerRadius(12)
                     .overlay(
                         RoundedRectangle(cornerRadius: 12)
                             .stroke(Color.white.opacity(0.3), lineWidth: 1)
                     )
                 }
-                .disabled(!authViewModel.isSocketAuthenticated || gameViewModel.isJoiningRoom)
-                .opacity(authViewModel.isSocketAuthenticated ? 1.0 : 0.6)
+                .disabled(authViewModel.isGuestMode || !authViewModel.isSocketAuthenticated || gameViewModel.isJoiningRoom)
+                .opacity((authViewModel.isSocketAuthenticated && !authViewModel.isGuestMode) ? 1.0 : 0.6)
                 .padding(.horizontal)
 
                 // Join by Code
                 VStack(spacing: 12) {
                     Button(action: {
-                        withAnimation(.spring()) {
-                            showJoinByCode.toggle()
+                        if !authViewModel.isGuestMode {
+                            withAnimation(.spring()) {
+                                showJoinByCode.toggle()
+                            }
                         }
                     }) {
                         HStack(spacing: 12) {
-                            Image(systemName: "keyboard")
+                            Image(systemName: authViewModel.isGuestMode ? "lock.fill" : "keyboard")
                                 .font(.system(size: 20))
-                            Text("Join with Code")
+                            Text(authViewModel.isGuestMode ? "Join with Code (Login Required)" : "Join with Code")
                                 .font(.system(size: 18, weight: .semibold))
                             Spacer()
-                            Image(systemName: showJoinByCode ? "chevron.up" : "chevron.down")
-                                .font(.system(size: 14))
+                            if !authViewModel.isGuestMode {
+                                Image(systemName: showJoinByCode ? "chevron.up" : "chevron.down")
+                                    .font(.system(size: 14))
+                            }
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 18)
                         .padding(.horizontal)
-                        .background(Color.white.opacity(0.15))
-                        .foregroundColor(.white)
+                        .background(Color.white.opacity(authViewModel.isGuestMode ? 0.08 : 0.15))
+                        .foregroundColor(.white.opacity(authViewModel.isGuestMode ? 0.5 : 1.0))
                         .cornerRadius(12)
                         .overlay(
                             RoundedRectangle(cornerRadius: 12)
                                 .stroke(Color.white.opacity(0.3), lineWidth: 1)
                         )
                     }
+                    .disabled(authViewModel.isGuestMode)
                     .padding(.horizontal)
 
                     if showJoinByCode {

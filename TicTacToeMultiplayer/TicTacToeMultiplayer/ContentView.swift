@@ -18,7 +18,43 @@ struct ContentView: View {
             .ignoresSafeArea()
 
             if authViewModel.isAuthenticated {
-                if authViewModel.needsUsername {
+                if authViewModel.isGuestMode {
+                    // Guest mode: Show banner with option to login for online features
+                    VStack(spacing: 0) {
+                        // Guest mode banner
+                        VStack(spacing: 8) {
+                            Text("Guest Mode")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(.white)
+                            Text("Login to access online multiplayer and leaderboards")
+                                .font(.system(size: 13))
+                                .foregroundColor(.white.opacity(0.8))
+                                .multilineTextAlignment(.center)
+                            Button(action: {
+                                authViewModel.logout()
+                            }) {
+                                Text("Login Now")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(Color(hex: "#667eea"))
+                                    .padding(.horizontal, 20)
+                                    .padding(.vertical, 8)
+                                    .background(Color.white)
+                                    .cornerRadius(8)
+                            }
+                            .padding(.top, 4)
+                        }
+                        .padding(.vertical, 16)
+                        .frame(maxWidth: .infinity)
+                        .background(Color.white.opacity(0.15))
+
+                        // Show room selection with features disabled for guests
+                        if gameViewModel.currentRoom == nil {
+                            RoomSelectionView()
+                        } else {
+                            GameBoardView()
+                        }
+                    }
+                } else if authViewModel.needsUsername {
                     UsernameSetupView()
                 } else if gameViewModel.currentRoom == nil {
                     RoomSelectionView()

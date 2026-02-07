@@ -2,6 +2,7 @@ import Foundation
 import Auth0
 import Combine
 import Security
+import AuthenticationServices
 
 class AuthService: ObservableObject {
     static let shared = AuthService()
@@ -11,6 +12,7 @@ class AuthService: ObservableObject {
     @Published var accessToken: String?
     @Published var userId: String?
     @Published var errorMessage: String?
+    @Published var authProvider: String = "auth0" // "auth0" or "apple"
 
     private let credentialsManager: CredentialsManager
 
@@ -31,7 +33,7 @@ class AuthService: ObservableObject {
                 .start()
 
             await MainActor.run {
-                self.handleCredentials(credentials)
+                self.handleCredentials(credentials, provider: "auth0")
             }
         } catch {
             await MainActor.run {
@@ -41,23 +43,53 @@ class AuthService: ObservableObject {
         }
     }
 
+    func loginWithApple(authorization: ASAuthorization) async {
+        guard let appleIDCredential = authorization.credential as? ASAuthorizationAppleIDCredential,
+              let identityToken = appleIDCredential.identityToken,
+              let tokenString = String(data: identityToken, encoding: .utf8) else {
+            await MainActor.run {
+                self.errorMessage = "Failed to get Apple ID token"
+            }
+            return
+        }
+
+        await MainActor.run {
+            // Store Apple token and user info
+            self.accessToken = tokenString
+            self.userId = appleIDCredential.user
+            self.authProvider = "apple"
+            self.isAuthenticated = true
+
+            // Extract email if available (only provided on first sign-in)
+            if let email = appleIDCredential.email {
+                // Store email for later use
+                UserDefaults.standard.set(email, forKey: "apple_user_email")
+            }
+
+            print("AuthService: Apple Sign In successful, userId: \(appleIDCredential.user)")
+        }
+    }
+
     func logout() async {
         do {
-            try await Auth0.webAuth().clearSession()
+            if authProvider == "auth0" {
+                try await Auth0.webAuth().clearSession()
+            }
+            // For Apple, just clear local credentials
             await MainActor.run {
                 self.clearCredentials()
             }
         } catch {
             await MainActor.run {
                 self.errorMessage = "Logout failed: \(error.localizedDescription)"
-                print("Auth0 logout error: \(error)")
+                print("Logout error: \(error)")
             }
         }
     }
 
     // MARK: - Credentials Management
 
-    private func handleCredentials(_ credentials: Credentials) {
+    private func handleCredentials(_ credentials: Credentials, provider: String) {
         _ = credentialsManager.store(credentials: credentials)
         // Use ID token for socket authentication (always a JWT)
         // Access token without audience is opaque and can't be decoded
@@ -65,7 +97,8 @@ class AuthService: ObservableObject {
         print("AuthService: Setting ID token, length: \(token.count)")
         accessToken = token
         userId = decodeUserId(from: token)
-        print("AuthService: Decoded userId: \(userId ?? "nil")")
+        authProvider = provider
+        print("AuthService: Decoded userId: \(userId ?? "nil"), provider: \(provider)")
         isAuthenticated = true
 
         // Fetch user profile
@@ -87,6 +120,7 @@ class AuthService: ObservableObject {
                     // Use ID token for socket authentication (always a JWT)
                     self?.accessToken = credentials.idToken
                     self?.userId = self?.decodeUserId(from: credentials.idToken)
+                    self?.authProvider = "auth0" // Credentials manager only stores Auth0 credentials
                     self?.isAuthenticated = true
                     Task {
                         await self?.fetchUserProfile()
@@ -104,6 +138,7 @@ class AuthService: ObservableObject {
         accessToken = nil
         userId = nil
         userProfile = nil
+        authProvider = "auth0"
         isAuthenticated = false
         clearSavedUsername()
     }

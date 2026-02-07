@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import AuthenticationServices
 
 @MainActor
 class AuthViewModel: ObservableObject {
@@ -200,5 +201,24 @@ class AuthViewModel: ObservableObject {
         }
         print("AuthViewModel: Sending socket login with username: \(username.isEmpty ? "nil" : username)")
         socketService.login(token: token, customUsername: username.isEmpty ? nil : username)
+    }
+
+    func handleAppleSignIn(_ result: Result<ASAuthorization, Error>) {
+        isLoading = true
+        errorMessage = nil
+
+        Task {
+            switch result {
+            case .success(let authorization):
+                await authService.loginWithApple(authorization: authorization)
+                if authService.isAuthenticated {
+                    connectSocket()
+                }
+            case .failure(let error):
+                errorMessage = "Apple Sign In failed: \(error.localizedDescription)"
+                print("Apple Sign In error: \(error)")
+            }
+            isLoading = false
+        }
     }
 }

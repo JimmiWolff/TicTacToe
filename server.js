@@ -26,6 +26,8 @@ const socketIo = require('socket.io');
 const cors = require('cors');
 const path = require('path');
 const jwt = require('jsonwebtoken');
+const appleSignin = require('apple-signin-auth');
+const fs = require('fs');
 const { connectToDatabase, getDatabase } = require('./database');
 const highscoreService = require('./highscore');
 const gameStateService = require('./gameState');
@@ -95,13 +97,51 @@ app.get('/sentry/config', (req, res) => {
 // });
 
 // JWT verification middleware
-function verifyToken(token) {
+async function verifyAppleToken(token) {
     try {
-        // In a real application, you would verify with Auth0's public key
-        // For now, we'll do basic JWT parsing
-        const decoded = jwt.decode(token);
-        return decoded;
+        // Verify Apple ID token
+        const appleIdTokenPayload = await appleSignin.verifyIdToken(token, {
+            audience: APPLE_CLIENT_ID,
+            nonce: undefined, // nonce is optional for server-side verification
+            ignoreExpiration: false
+        });
+
+        return {
+            sub: appleIdTokenPayload.sub,
+            email: appleIdTokenPayload.email,
+            email_verified: appleIdTokenPayload.email_verified,
+            authProvider: 'apple'
+        };
     } catch (error) {
+        console.error('Apple token verification failed:', error);
+        return null;
+    }
+}
+
+async function verifyToken(token) {
+    try {
+        // Decode token without verification to check issuer
+        const decoded = jwt.decode(token, { complete: true });
+
+        if (!decoded || !decoded.payload) {
+            return null;
+        }
+
+        // Check if token is from Apple (Apple tokens have iss: https://appleid.apple.com)
+        const issuer = decoded.payload.iss;
+
+        if (issuer && issuer.includes('appleid.apple.com')) {
+            // Verify Apple token
+            return await verifyAppleToken(token);
+        } else {
+            // Assume Auth0 token - basic JWT parsing (in production, verify with Auth0's public key)
+            return {
+                ...decoded.payload,
+                authProvider: 'auth0'
+            };
+        }
+    } catch (error) {
+        console.error('Token verification error:', error);
         return null;
     }
 }
@@ -360,6 +400,36 @@ const AUTH0_CLIENT_ID = process.env.AUTH0_CLIENT_ID;
 const AUTH0_CLIENT_SECRET = process.env.AUTH0_CLIENT_SECRET;
 const AUTH0_AUDIENCE = process.env.AUTH0_AUDIENCE;
 
+// Apple Sign In Configuration
+const APPLE_CLIENT_ID = process.env.APPLE_CLIENT_ID;
+const APPLE_TEAM_ID = process.env.APPLE_TEAM_ID;
+const APPLE_KEY_ID = process.env.APPLE_KEY_ID;
+const APPLE_PRIVATE_KEY_PATH = process.env.APPLE_PRIVATE_KEY_PATH;
+
+// Load Apple private key if configured
+let applePrivateKey = null;
+
+// First try to load from environment variable (recommended for Railway)
+if (process.env.APPLE_PRIVATE_KEY) {
+    applePrivateKey = process.env.APPLE_PRIVATE_KEY;
+    console.log('✅ Apple Sign In private key loaded from environment variable');
+}
+// Fall back to file path if environment variable not set
+else if (APPLE_PRIVATE_KEY_PATH && fs.existsSync(APPLE_PRIVATE_KEY_PATH)) {
+    try {
+        applePrivateKey = fs.readFileSync(APPLE_PRIVATE_KEY_PATH, 'utf8');
+        console.log('✅ Apple Sign In private key loaded from file');
+    } catch (error) {
+        console.error('❌ Failed to load Apple private key from file:', error);
+    }
+}
+
+// Log Apple Sign In configuration status
+if (APPLE_CLIENT_ID && APPLE_TEAM_ID && APPLE_KEY_ID && applePrivateKey) {
+    console.log('✅ Apple Sign In is fully configured');
+} else if (APPLE_CLIENT_ID || APPLE_TEAM_ID || APPLE_KEY_ID) {
+    console.log('⚠️  Apple Sign In is partially configured - some credentials missing');
+}
 
 // In-memory user storage (in production, use a proper database)
 const registeredUsers = new Map();
@@ -642,14 +712,14 @@ io.on('connection', (socket) => {
             let actualUsername = null;
             let userInfo = null;
 
-        // Try Auth0 token first
+        // Verify token (supports both Auth0 and Apple)
         if (token) {
-            const decoded = verifyToken(token);
+            const decoded = await verifyToken(token);
             if (decoded) {
                 // First try to get stored username from database
                 const storedUsername = await getStoredUsername(decoded.sub);
 
-                // Use priority: customUsername > stored username from DB > Auth0 profile fields > userId
+                // Use priority: customUsername > stored username from DB > token profile fields > userId
                 actualUsername = customUsername ||
                                storedUsername ||
                                decoded.nickname ||
@@ -663,7 +733,7 @@ io.on('connection', (socket) => {
                     id: decoded.sub,
                     email: decoded.email,
                     username: actualUsername,
-                    authType: 'auth0',
+                    authType: decoded.authProvider || 'auth0',
                     customUsername: customUsername ? true : false
                 };
 
@@ -793,6 +863,7 @@ io.on('connection', (socket) => {
             symbol: room.players.length === 0 ? 'X' : 'O',
             loginTime: new Date(),
             authType: userInfo.authType,
+            authProvider: userInfo.authType, // Store auth provider (auth0 or apple)
             email: userInfo.email || null,
             userId: userInfo.id || null,
             lastSeen: new Date()

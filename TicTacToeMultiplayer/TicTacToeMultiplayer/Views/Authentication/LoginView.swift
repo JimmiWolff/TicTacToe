@@ -1,4 +1,5 @@
 import SwiftUI
+import AuthenticationServices
 
 struct LoginView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
@@ -74,7 +75,37 @@ struct LoginView: View {
 
             Spacer()
 
-            // Login button
+            // Sign in with Apple button
+            SignInWithAppleButton(
+                onRequest: { request in
+                    request.requestedScopes = [.fullName, .email]
+                },
+                onCompletion: { result in
+                    authViewModel.handleAppleSignIn(result)
+                }
+            )
+            .signInWithAppleButtonStyle(.white)
+            .frame(height: 50)
+            .cornerRadius(12)
+            .padding(.horizontal, 40)
+            .disabled(authViewModel.isLoading)
+
+            // Divider
+            HStack {
+                Rectangle()
+                    .fill(Color.white.opacity(0.3))
+                    .frame(height: 1)
+                Text("or")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.white.opacity(0.7))
+                Rectangle()
+                    .fill(Color.white.opacity(0.3))
+                    .frame(height: 1)
+            }
+            .padding(.horizontal, 40)
+            .padding(.vertical, 8)
+
+            // Auth0 Login button
             Button(action: {
                 authViewModel.login()
             }) {
@@ -83,10 +114,10 @@ struct LoginView: View {
                         ProgressView()
                             .progressViewStyle(CircularProgressViewStyle(tint: Color(hex: "#667eea")))
                     } else {
-                        Image(systemName: "person.fill")
+                        Image(systemName: "envelope.fill")
                             .font(.system(size: 18))
                     }
-                    Text(authViewModel.isLoading ? "Logging in..." : "Login to Play")
+                    Text(authViewModel.isLoading ? "Logging in..." : "Login with Email")
                         .font(.system(size: 18, weight: .semibold))
                 }
                 .frame(maxWidth: .infinity)

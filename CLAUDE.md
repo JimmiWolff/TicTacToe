@@ -24,6 +24,61 @@ npm run build  # outputs: "No build step required"
 npm test      # outputs: "No tests specified"
 ```
 
+## 🚨 CRITICAL: Development Workflow Rules 🚨
+
+**NEVER make changes directly on the main branch. ALWAYS follow this workflow:**
+
+1. **Create a Feature Branch**
+   ```bash
+   git checkout -b feature/descriptive-name
+   ```
+
+2. **Make and Test Changes**
+   - Implement your changes on the feature branch
+   - Test locally with `npm start`
+   - Verify syntax: `node --check server.js`
+   - Test all affected functionality thoroughly
+
+3. **Commit to Feature Branch**
+   ```bash
+   git add .
+   git commit -m "Descriptive commit message"
+   ```
+
+4. **Push Feature Branch to GitHub**
+   ```bash
+   git push -u origin feature/descriptive-name
+   ```
+   **IMPORTANT:** Railway needs the branch on GitHub to deploy it for testing
+
+5. **Test on Railway**
+   - Go to Railway dashboard
+   - Select the feature branch for deployment
+   - Verify the deployment works correctly
+   - Test all functionality in the live environment
+   - Check both web app and iOS app integration
+
+6. **Merge to Main ONLY After Testing**
+   ```bash
+   git checkout main
+   git merge feature/descriptive-name
+   git push origin main
+   ```
+
+**Why This Matters:**
+- Main branch deploys directly to production (play.tictactoe.dk)
+- Broken code on main breaks the live app for all users
+- Syntax errors prevent Railway deployment entirely
+- Feature branches allow safe testing before affecting production
+- Multiple fix commits on main indicate improper workflow
+
+**Red Flags to Avoid:**
+- ❌ Making changes directly on main
+- ❌ Pushing untested code
+- ❌ Multiple "fix" commits in a row on main
+- ❌ Skipping syntax validation (`node --check`)
+- ❌ Not testing on Railway before merging
+
 ## Architecture Overview
 
 ### Core Components
@@ -124,34 +179,16 @@ The application is deployed on Railway with automatic deployments from GitHub:
 
 ### Development Workflow
 
-**IMPORTANT: Always follow this workflow when making changes:**
+**🚨 CRITICAL: See "Development Workflow Rules" section at the top of this document.**
 
-1. **Create a feature branch** for any new changes
-   ```bash
-   git checkout -b feature/your-feature-name
-   ```
+**Summary:**
+- ❌ **NEVER commit directly to main**
+- ✅ Always use feature branches
+- ✅ Test on Railway before merging
+- ✅ Verify syntax with `node --check server.js`
+- ✅ Test both web and iOS apps
 
-2. **Make your changes** and commit them
-   ```bash
-   git add .
-   git commit -m "Your commit message"
-   ```
-
-3. **Push the branch to GitHub** to make it available for testing on Railway
-   ```bash
-   git push -u origin feature/your-feature-name
-   ```
-
-4. **Test on Railway** by selecting the branch in Railway's deployment settings
-
-5. **Merge to main** only after testing is successful
-   ```bash
-   git checkout main
-   git merge feature/your-feature-name
-   git push origin main
-   ```
-
-**Note:** Railway needs the branch to be pushed to GitHub before it can be selected for deployment. Always push branches before attempting to test them on Railway.
+Main branch = Production. Broken code on main = broken app for all users.
 
 ## Key Files
 

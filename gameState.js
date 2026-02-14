@@ -135,12 +135,18 @@ class GameStateService {
                 return { deleted: true, playersRemaining: 0 };
             }
 
-            // Otherwise, update the game with the player removed
+            // Otherwise, update the game with the player removed and reset game state
             await collection.updateOne(
                 { roomCode: roomCode },
                 {
                     $set: {
                         players: updatedPlayers,
+                        // Reset game board and state
+                        board: ['', '', '', '', '', '', '', '', ''],
+                        currentPlayer: 'X',
+                        gameActive: true,
+                        piecesPlaced: { X: 0, O: 0 },
+                        gamePhase: 'placement',
                         lastActivity: new Date()
                     }
                 }

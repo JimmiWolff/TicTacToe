@@ -589,8 +589,11 @@ async function deleteUserAccount(userId) {
                     await gameStateService.deleteGame(roomCode);
                     console.log(`Room ${roomCode} deleted (empty after account deletion)`);
                 } else {
-                    // Room still has other players, just update the game state
+                    // Room still has other players - reset the game state
+                    resetGame(room);
                     room.lastActivity = new Date();
+
+                    // Keep the scores but reset the board
                     await saveGameState(room);
 
                     // Broadcast updated game state to remaining players
@@ -605,7 +608,7 @@ async function deleteUserAccount(userId) {
                         maxPieces: room.maxPieces,
                         pieceColors: room.pieceColors
                     });
-                    console.log(`User removed from room ${roomCode}, ${room.players.length} player(s) remaining`);
+                    console.log(`User removed from room ${roomCode}, game reset, ${room.players.length} player(s) remaining`);
                 }
             } else {
                 // Room not in memory, remove player from database

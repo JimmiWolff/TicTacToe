@@ -26,10 +26,25 @@ class GameViewModel: ObservableObject {
 
     private let socketService = SocketService.shared
     private let authService = AuthService.shared
+    private var authViewModel: AuthViewModel?
     private var cancellables = Set<AnyCancellable>()
 
     init() {
         setupBindings()
+    }
+
+    func setAuthViewModel(_ viewModel: AuthViewModel) {
+        self.authViewModel = viewModel
+
+        // Clear all state when user logs out or deletes account
+        viewModel.$isAuthenticated
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] isAuthenticated in
+                if !isAuthenticated {
+                    self?.clearAllState()
+                }
+            }
+            .store(in: &cancellables)
     }
 
     private func setupBindings() {
@@ -225,6 +240,19 @@ class GameViewModel: ObservableObject {
         gameState = .empty
         myPlayer = nil
         selectedPieceIndex = nil
+    }
+
+    func clearAllState() {
+        // Clear all game state (used when logging out or deleting account)
+        currentRoom = nil
+        gameState = .empty
+        myPlayer = nil
+        selectedPieceIndex = nil
+        leaderboard = []
+        playerStats = .empty
+        activeGames = []
+        errorMessage = nil
+        toastMessage = nil
     }
 
     // MARK: - Game Actions

@@ -608,8 +608,15 @@ async function deleteUserAccount(userId) {
                     console.log(`User removed from room ${roomCode}, ${room.players.length} player(s) remaining`);
                 }
             } else {
-                // Room not in memory, just delete from database
-                await gameStateService.deleteGame(roomCode);
+                // Room not in memory, remove player from database
+                const result = await gameStateService.removePlayerFromGame(roomCode, userId);
+                if (result.deleted) {
+                    console.log(`Room ${roomCode} deleted from database (empty after account deletion)`);
+                } else if (result.playersRemaining > 0) {
+                    console.log(`User removed from room ${roomCode} in database, ${result.playersRemaining} player(s) remaining`);
+                } else {
+                    console.log(`Failed to remove user from room ${roomCode} or room not found`);
+                }
             }
         }
 

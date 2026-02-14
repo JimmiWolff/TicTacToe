@@ -244,4 +244,39 @@ class AuthViewModel: ObservableObject {
         // Don't connect to socket in guest mode - local play only
         print("AuthViewModel: Continuing as guest - local play mode")
     }
+
+    func deleteAccount() async throws {
+        guard let token = authService.accessToken else {
+            throw NSError(
+                domain: "AuthViewModel",
+                code: -1,
+                userInfo: [NSLocalizedDescriptionKey: "No authentication token available"]
+            )
+        }
+
+        guard !isGuestMode else {
+            throw NSError(
+                domain: "AuthViewModel",
+                code: -2,
+                userInfo: [NSLocalizedDescriptionKey: "Guest accounts cannot be deleted"]
+            )
+        }
+
+        try await APIService.shared.deleteAccount(token: token)
+
+        await MainActor.run {
+            socketService.disconnect()
+        }
+
+        await authService.logout()
+
+        await MainActor.run {
+            isAuthenticated = false
+            isSocketAuthenticated = false
+            needsUsername = false
+            username = ""
+            userId = nil
+            errorMessage = nil
+        }
+    }
 }

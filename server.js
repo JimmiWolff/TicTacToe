@@ -199,6 +199,44 @@ app.get('/auth/profile', (req, res) => {
     });
 });
 
+// Delete user account
+app.delete('/api/user/account', async (req, res) => {
+    try {
+        const authHeader = req.headers.authorization;
+        if (!authHeader) {
+            return res.status(401).json({
+                success: false,
+                error: 'No authorization header'
+            });
+        }
+
+        const token = authHeader.split(' ')[1];
+        const decoded = await verifyToken(token);
+
+        if (!decoded) {
+            return res.status(401).json({
+                success: false,
+                error: 'Invalid token'
+            });
+        }
+
+        const userId = decoded.sub;
+        await deleteUserAccount(userId);
+
+        res.json({
+            success: true,
+            message: 'Account successfully deleted'
+        });
+    } catch (error) {
+        console.error('Error deleting user account:', error);
+        Sentry.captureException(error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to delete account'
+        });
+    }
+});
+
 // Health check endpoint for Azure
 app.get('/health', (req, res) => {
     const totalPlayers = Array.from(rooms.values()).reduce((sum, room) => sum + room.players.length, 0);
@@ -519,6 +557,55 @@ async function updateHighscoresAfterGame(room, winner) {
         }
     } catch (error) {
         console.error('Error updating highscores:', error);
+    }
+}
+
+async function deleteUserAccount(userId) {
+    try {
+        console.log(`Starting account deletion for user: ${userId}`);
+
+        // 1. Find and delete all active games
+        const userGames = await gameStateService.getUserGames(userId);
+
+        for (const game of userGames) {
+            const roomCode = game.roomCode;
+
+            // Notify opponents via Socket.IO
+            io.to(roomCode).emit('playerAccountDeleted', {
+                userId: userId,
+                message: 'Your opponent has deleted their account. This game will be removed.'
+            });
+
+            await gameStateService.deleteGame(roomCode);
+
+            if (rooms.has(roomCode)) {
+                rooms.delete(roomCode);
+            }
+        }
+
+        // 2. Delete from highscores
+        await highscoreService.deletePlayer(userId);
+
+        // 3. Disconnect active sockets
+        const sockets = await io.fetchSockets();
+        for (const socket of sockets) {
+            if (socket.userInfo?.id === userId) {
+                socket.disconnect(true);
+            }
+        }
+
+        Sentry.addBreadcrumb({
+            category: 'user',
+            message: 'User account deleted',
+            data: { userId, gamesDeleted: userGames.length },
+            level: 'info'
+        });
+
+        console.log(`Successfully deleted account for user: ${userId}`);
+        return true;
+    } catch (error) {
+        console.error('Error in deleteUserAccount:', error);
+        throw error;
     }
 }
 

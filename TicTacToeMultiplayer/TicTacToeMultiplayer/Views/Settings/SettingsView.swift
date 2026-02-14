@@ -11,6 +11,10 @@ struct SettingsView: View {
     @State private var selectedColorO: Color
     @State private var showingColorPickerX = false
     @State private var showingColorPickerO = false
+    @State private var showingDeleteConfirmation = false
+    @State private var showingFinalDeleteWarning = false
+    @State private var isDeletingAccount = false
+    @State private var deleteError: String?
 
     init() {
         _selectedColorX = State(initialValue: Color(hex: "#e74c3c"))
@@ -98,6 +102,41 @@ struct SettingsView: View {
                         }
                         .padding(.horizontal)
 
+                        Divider()
+                            .background(Color.white.opacity(0.3))
+                            .padding(.horizontal)
+
+                        // Danger Zone section
+                        VStack(alignment: .leading, spacing: 16) {
+                            Text("Danger Zone")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundColor(.white)
+
+                            Button(action: {
+                                showingDeleteConfirmation = true
+                            }) {
+                                HStack {
+                                    Image(systemName: "trash.fill")
+                                    Text("Delete Account")
+                                        .font(.system(size: 16, weight: .semibold))
+                                }
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(Color.red.opacity(0.8))
+                                .cornerRadius(10)
+                            }
+                            .disabled(isDeletingAccount)
+
+                            if let error = deleteError {
+                                Text(error)
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.red.opacity(0.8))
+                                    .padding(.horizontal)
+                            }
+                        }
+                        .padding(.horizontal)
+
                         Spacer(minLength: 40)
                     }
                     .padding(.top, 20)
@@ -113,6 +152,22 @@ struct SettingsView: View {
                     .foregroundColor(.white)
                 }
             }
+        }
+        .alert("Delete Account?", isPresented: $showingDeleteConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Delete", role: .destructive) {
+                showingFinalDeleteWarning = true
+            }
+        } message: {
+            Text("Are you sure you want to delete your account? This action cannot be undone.")
+        }
+        .alert("Final Warning", isPresented: $showingFinalDeleteWarning) {
+            Button("Cancel", role: .cancel) { }
+            Button("Permanently Delete", role: .destructive) {
+                deleteAccount()
+            }
+        } message: {
+            Text("This will permanently delete:\n• All your game statistics\n• Your username and profile\n• All active games\n\nThis action is irreversible.")
         }
         .onAppear {
             updateColorsFromState()
@@ -141,6 +196,22 @@ struct SettingsView: View {
     private func updateColor(piece: String, color: Color) {
         let hexColor = color.toHex()
         gameViewModel.changeColor(piece: piece, color: hexColor)
+    }
+
+    private func deleteAccount() {
+        isDeletingAccount = true
+        deleteError = nil
+
+        Task {
+            do {
+                try await authViewModel.deleteAccount()
+            } catch {
+                await MainActor.run {
+                    deleteError = error.localizedDescription
+                    isDeletingAccount = false
+                }
+            }
+        }
     }
 }
 

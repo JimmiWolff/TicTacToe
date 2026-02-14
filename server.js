@@ -779,6 +779,63 @@ io.on('connection', (socket) => {
             const room = await getOrCreateRoom(normalizedRoomCode);
             room.lastActivity = new Date();
 
+            // If user is already authenticated (has userInfo), add them to the room automatically
+            if (socket.userInfo && socket.actualUsername) {
+                const userId = socket.userInfo.id;
+                const username = socket.actualUsername;
+
+                // Check if user is reconnecting to an existing game
+                const existingPlayerIndex = room.players.findIndex(p => p.userId === userId);
+
+                if (existingPlayerIndex !== -1) {
+                    // User is reconnecting - update their socket ID
+                    const existingPlayer = room.players[existingPlayerIndex];
+                    existingPlayer.socketId = socket.id;
+                    existingPlayer.lastSeen = new Date();
+
+                    socket.player = existingPlayer;
+                    socket.playerRoom = normalizedRoomCode;
+
+                    console.log(`User ${username} reconnected to room ${normalizedRoomCode} as ${existingPlayer.symbol}`);
+
+                    await gameStateService.updatePlayerStatus(normalizedRoomCode, userId, socket.id);
+                } else if (room.players.length < room.maxPlayers) {
+                    // Add new player to room
+                    const player = {
+                        socketId: socket.id,
+                        username: username,
+                        symbol: room.players.length === 0 ? 'X' : 'O',
+                        loginTime: new Date(),
+                        authType: socket.userInfo.authType || 'auth0',
+                        authProvider: socket.userInfo.authType || 'auth0',
+                        email: socket.userInfo.email || null,
+                        userId: userId,
+                        lastSeen: new Date()
+                    };
+
+                    room.players.push(player);
+                    socket.player = player;
+                    socket.playerRoom = normalizedRoomCode;
+
+                    console.log(`User ${username} joined room ${normalizedRoomCode} as ${player.symbol}`);
+
+                    await saveGameState(room);
+                }
+
+                // Broadcast updated game state to all clients in the room
+                io.to(normalizedRoomCode).emit('gameStateUpdate', {
+                    players: room.players,
+                    board: room.board,
+                    currentPlayer: room.currentPlayer,
+                    gameActive: room.gameActive,
+                    scores: room.scores,
+                    piecesPlaced: room.piecesPlaced,
+                    gamePhase: room.gamePhase,
+                    maxPieces: room.maxPieces,
+                    pieceColors: room.pieceColors
+                });
+            }
+
             socket.emit('roomJoined', {
                 success: true,
                 roomCode: normalizedRoomCode,

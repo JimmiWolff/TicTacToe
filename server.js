@@ -586,7 +586,6 @@ async function deleteUserAccount(userId) {
 
             console.log(`Game ${roomCode} deleted (user account deletion)`);
         }
-        }
 
         // 2. Delete from highscores
         await highscoreService.deletePlayer(userId);

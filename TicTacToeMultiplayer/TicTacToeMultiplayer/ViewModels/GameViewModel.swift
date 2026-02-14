@@ -26,25 +26,10 @@ class GameViewModel: ObservableObject {
 
     private let socketService = SocketService.shared
     private let authService = AuthService.shared
-    private var authViewModel: AuthViewModel?
     private var cancellables = Set<AnyCancellable>()
 
     init() {
         setupBindings()
-    }
-
-    func setAuthViewModel(_ viewModel: AuthViewModel) {
-        self.authViewModel = viewModel
-
-        // Clear all state when user logs out or deletes account
-        viewModel.$isAuthenticated
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] isAuthenticated in
-                if !isAuthenticated {
-                    self?.clearAllState()
-                }
-            }
-            .store(in: &cancellables)
     }
 
     private func setupBindings() {

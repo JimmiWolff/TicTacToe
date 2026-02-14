@@ -204,11 +204,11 @@ struct SettingsView: View {
 
         Task {
             do {
-                // Clear all game state before deleting account
+                try await authViewModel.deleteAccount()
+                // Clear game state after successful deletion
                 await MainActor.run {
                     gameViewModel.clearAllState()
                 }
-                try await authViewModel.deleteAccount()
             } catch {
                 await MainActor.run {
                     deleteError = error.localizedDescription

@@ -116,48 +116,6 @@ class GameStateService {
         }
     }
 
-    async removePlayerFromGame(roomCode, userId) {
-        try {
-            const collection = await this.getCollection();
-
-            // First, get the current game to check player count
-            const game = await collection.findOne({ roomCode: roomCode });
-            if (!game) {
-                return { deleted: false, playersRemaining: 0 };
-            }
-
-            // Remove the player from the players array
-            const updatedPlayers = game.players.filter(p => p.userId !== userId);
-
-            // If no players remain, delete the game entirely
-            if (updatedPlayers.length === 0) {
-                await collection.deleteOne({ roomCode: roomCode });
-                return { deleted: true, playersRemaining: 0 };
-            }
-
-            // Otherwise, update the game with the player removed and reset game state
-            await collection.updateOne(
-                { roomCode: roomCode },
-                {
-                    $set: {
-                        players: updatedPlayers,
-                        // Reset game board and state
-                        board: ['', '', '', '', '', '', '', '', ''],
-                        currentPlayer: 'X',
-                        gameActive: true,
-                        piecesPlaced: { X: 0, O: 0 },
-                        gamePhase: 'placement',
-                        lastActivity: new Date()
-                    }
-                }
-            );
-
-            return { deleted: false, playersRemaining: updatedPlayers.length };
-        } catch (error) {
-            console.error('Error removing player from game:', error);
-            return { deleted: false, playersRemaining: 0 };
-        }
-    }
 
     async getUserGames(userId) {
         try {

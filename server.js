@@ -576,51 +576,16 @@ async function deleteUserAccount(userId) {
                 message: 'Your opponent has deleted their account. This game will be removed.'
             });
 
-            // Remove user from in-memory room if it exists
+            // Delete the game entirely when user deletes account
+            await gameStateService.deleteGame(roomCode);
+
+            // Remove from in-memory rooms
             if (rooms.has(roomCode)) {
-                const room = rooms.get(roomCode);
-
-                // Remove the player from the room
-                room.players = room.players.filter(p => p.userId !== userId);
-
-                // If room is now empty, delete it entirely
-                if (room.players.length === 0) {
-                    rooms.delete(roomCode);
-                    await gameStateService.deleteGame(roomCode);
-                    console.log(`Room ${roomCode} deleted (empty after account deletion)`);
-                } else {
-                    // Room still has other players - reset the game state
-                    resetGame(room);
-                    room.lastActivity = new Date();
-
-                    // Keep the scores but reset the board
-                    await saveGameState(room);
-
-                    // Broadcast updated game state to remaining players
-                    io.to(roomCode).emit('gameStateUpdate', {
-                        players: room.players,
-                        board: room.board,
-                        currentPlayer: room.currentPlayer,
-                        gameActive: room.gameActive,
-                        scores: room.scores,
-                        piecesPlaced: room.piecesPlaced,
-                        gamePhase: room.gamePhase,
-                        maxPieces: room.maxPieces,
-                        pieceColors: room.pieceColors
-                    });
-                    console.log(`User removed from room ${roomCode}, game reset, ${room.players.length} player(s) remaining`);
-                }
-            } else {
-                // Room not in memory, remove player from database
-                const result = await gameStateService.removePlayerFromGame(roomCode, userId);
-                if (result.deleted) {
-                    console.log(`Room ${roomCode} deleted from database (empty after account deletion)`);
-                } else if (result.playersRemaining > 0) {
-                    console.log(`User removed from room ${roomCode} in database, ${result.playersRemaining} player(s) remaining`);
-                } else {
-                    console.log(`Failed to remove user from room ${roomCode} or room not found`);
-                }
+                rooms.delete(roomCode);
             }
+
+            console.log(`Game ${roomCode} deleted (user account deletion)`);
+        }
         }
 
         // 2. Delete from highscores

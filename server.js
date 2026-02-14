@@ -564,7 +564,7 @@ async function deleteUserAccount(userId) {
     try {
         console.log(`Starting account deletion for user: ${userId}`);
 
-        // 1. Find and delete all active games
+        // 1. Remove user from all active games
         const userGames = await gameStateService.getUserGames(userId);
 
         for (const game of userGames) {
@@ -576,10 +576,40 @@ async function deleteUserAccount(userId) {
                 message: 'Your opponent has deleted their account. This game will be removed.'
             });
 
-            await gameStateService.deleteGame(roomCode);
-
+            // Remove user from in-memory room if it exists
             if (rooms.has(roomCode)) {
-                rooms.delete(roomCode);
+                const room = rooms.get(roomCode);
+
+                // Remove the player from the room
+                room.players = room.players.filter(p => p.userId !== userId);
+
+                // If room is now empty, delete it entirely
+                if (room.players.length === 0) {
+                    rooms.delete(roomCode);
+                    await gameStateService.deleteGame(roomCode);
+                    console.log(`Room ${roomCode} deleted (empty after account deletion)`);
+                } else {
+                    // Room still has other players, just update the game state
+                    room.lastActivity = new Date();
+                    await saveGameState(room);
+
+                    // Broadcast updated game state to remaining players
+                    io.to(roomCode).emit('gameStateUpdate', {
+                        players: room.players,
+                        board: room.board,
+                        currentPlayer: room.currentPlayer,
+                        gameActive: room.gameActive,
+                        scores: room.scores,
+                        piecesPlaced: room.piecesPlaced,
+                        gamePhase: room.gamePhase,
+                        maxPieces: room.maxPieces,
+                        pieceColors: room.pieceColors
+                    });
+                    console.log(`User removed from room ${roomCode}, ${room.players.length} player(s) remaining`);
+                }
+            } else {
+                // Room not in memory, just delete from database
+                await gameStateService.deleteGame(roomCode);
             }
         }
 

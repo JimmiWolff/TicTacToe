@@ -564,8 +564,8 @@ async function deleteUserAccount(userId) {
     try {
         console.log(`Starting account deletion for user: ${userId}`);
 
-        // 1. Remove user from all active games
-        const userGames = await gameStateService.getUserGames(userId);
+        // 1. Remove user from ALL games (including inactive/completed ones)
+        const userGames = await gameStateService.getAllUserGames(userId);
 
         for (const game of userGames) {
             const roomCode = game.roomCode;

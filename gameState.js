@@ -172,6 +172,25 @@ class GameStateService {
         }
     }
 
+    async getAllUserGames(userId) {
+        try {
+            const collection = await this.getCollection();
+
+            // Get ALL games for this user, including inactive ones
+            const games = await collection
+                .find({
+                    'players.userId': userId
+                })
+                .sort({ lastActivity: -1 })
+                .toArray();
+
+            return games;
+        } catch (error) {
+            console.error('Error getting all user games:', error);
+            return [];
+        }
+    }
+
     async cleanupOldGames() {
         try {
             const collection = await this.getCollection();

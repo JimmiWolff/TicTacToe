@@ -60,22 +60,37 @@ npm test      # outputs: "No tests specified"
 
 6. **Request Claude Security Review Before Merging**
 
-   **IMPORTANT: Ask Claude to perform a security review using this exact prompt:**
+   **Step 1 - Security Review (MANDATORY):**
 
    ```
    Please perform a security review of this branch before I merge to main.
    Follow the instructions in security-review-prompt.md.
    ```
 
-   **Claude will:**
-   - Analyze all code changes in your branch
-   - Check for security vulnerabilities using AI-powered analysis
-   - Validate syntax with `node --check`
-   - Run `npm audit` for dependency vulnerabilities
-   - Check for hardcoded secrets, injection risks, auth issues
-   - Provide a comprehensive security report with PASS/FAIL recommendation
+   **Claude will check for:**
+   - JavaScript syntax errors
+   - Hardcoded secrets/passwords/API keys
+   - SQL/NoSQL injection vulnerabilities
+   - Authentication/authorization issues
+   - Dependency vulnerabilities (`npm audit`)
+   - CORS misconfigurations
 
-   **Only merge to main if Claude gives ✅ PASS**
+   **Step 2 - QA Review (MANDATORY):**
+
+   ```
+   Please perform a QA review of this branch before I merge to main.
+   Follow the instructions in qa-review-prompt.md.
+   ```
+
+   **Claude will verify:**
+   - Test coverage for changed code
+   - Critical features have tests
+   - Bug fixes have regression tests
+   - New features have adequate tests
+   - Test quality (not dummy tests)
+   - Code quality in changed files
+
+   **Only merge to main if BOTH reviews give ✅ PASS**
 
 **Why This Matters:**
 - Main branch deploys directly to production (play.tictactoe.dk)
@@ -91,6 +106,8 @@ npm test      # outputs: "No tests specified"
 - ❌ Skipping syntax validation (`node --check`)
 - ❌ Not testing on Railway before merging
 - ❌ Merging without running security review
+- ❌ Merging without running QA review
+- ❌ Adding features without tests
 
 ## Security Review Agent (Claude AI)
 
@@ -186,6 +203,122 @@ Follow the instructions in security-review-prompt.md.
 3. Commit the fixes to your feature branch
 4. Request another security review from Claude
 5. Only merge once you get ✅ PASS
+
+## QA Review Agent (Claude AI)
+
+**A mandatory QA review ensures adequate test coverage and code quality.**
+
+Claude reviews your code changes to verify proper testing and quality standards.
+
+### How to Request QA Review
+
+After security review passes, ask Claude:
+
+```
+Please perform a QA review of this branch before I merge to main.
+Follow the instructions in qa-review-prompt.md.
+```
+
+**Claude will automatically:**
+1. Check existing test coverage (backend and iOS)
+2. Verify critical features have tests
+3. Check if new features include tests
+4. Verify bug fixes have regression tests
+5. Assess test quality (not just dummy tests)
+6. Review code quality in changed files
+7. Provide detailed QA report with PASS/FAIL/WARNINGS
+
+### What Claude Checks
+
+**Test Coverage:**
+- ✓ Authentication & authorization tests
+- ✓ Account deletion tests
+- ✓ Game logic tests (win detection, turn validation)
+- ✓ Database operation tests
+- ✓ Socket.IO event tests
+- ✓ API endpoint tests
+- ✓ iOS UI and ViewModel tests
+- ✓ Error handling tests
+
+**Test Quality:**
+- ✓ Tests are focused (one behavior per test)
+- ✓ Descriptive test names
+- ✓ Tests are independent
+- ✓ Both success and failure cases tested
+- ✓ Edge cases covered
+- ✓ Not just mocking everything
+
+**Code Quality:**
+- ✓ Functions documented
+- ✓ Error cases handled
+- ✓ Input validated
+- ✓ No magic numbers
+- ✓ Code is DRY
+- ✓ Descriptive variable names
+
+### Understanding QA Review Results
+
+**✅ PASS - Adequate Testing**
+```
+### 🎯 Final Recommendation
+**RESULT:** ✅ PASS - Adequate testing
+```
+→ Test coverage is sufficient, proceed with merge
+
+**⚠️ PASS WITH WARNINGS - Some Gaps**
+```
+### ⚠️ Test Gaps (Recommended)
+- Edge case X could use a test
+- Integration test for Y would be helpful
+```
+→ Review gaps, add tests if critical, or merge if acceptable
+
+**❌ FAIL - Critical Tests Missing**
+```
+### ❌ Missing Tests (Critical)
+- New account deletion feature has no tests
+- Bug fix lacks regression test
+```
+→ Add missing tests before merging
+
+### When Claude Fails QA Review
+
+1. Read the **Missing Tests (Critical)** section
+2. Add tests for each listed item (see TEST-GUIDELINES.md for help)
+3. Run tests to verify they pass
+4. Commit tests to your feature branch
+5. Request another QA review from Claude
+6. Only merge once you get ✅ PASS or ⚠️ PASS WITH WARNINGS (if acceptable)
+
+### Test Priority
+
+**Must Have Tests (P0):**
+- Authentication/authorization
+- Data deletion and persistence
+- Security-sensitive operations
+- Win/loss detection
+- Payment processing (if applicable)
+
+**Should Have Tests (P1):**
+- Main user workflows
+- Database operations
+- API endpoints
+- Error handling
+
+**Nice to Have Tests (P2-P3):**
+- UI interactions
+- Settings
+- Non-critical features
+
+### When Tests Are Not Required
+
+QA review can pass without tests for:
+- Documentation-only changes
+- Configuration file updates
+- Minor text/copy changes
+- Development tooling updates
+
+**Claude will note:** "Tests not required - documentation only"
 
 ## Architecture Overview
 

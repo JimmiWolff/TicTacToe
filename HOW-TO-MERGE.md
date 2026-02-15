@@ -22,26 +22,37 @@ git push -u origin feature/my-feature
 # 5. Test on Railway (select your branch in Railway dashboard)
 
 # 6. Request security review from Claude
-# (see below for exact prompt)
+# (see below for exact prompts)
 
-# 7. If PASS, merge to main
+# 7. Request QA review from Claude
+
+# 8. If BOTH PASS, merge to main
 git checkout main
 git pull origin main
 git merge feature/my-feature --no-ff
 git push origin main
 ```
 
-## Step 6: Security Review (REQUIRED)
+## Step 6 & 7: Security and QA Reviews (REQUIRED)
 
-Before merging to main, you **MUST** get a security review from Claude.
+Before merging to main, you **MUST** get BOTH reviews from Claude.
 
-### How to Request Review
+### Step 6: Security Review
 
 In your Claude Code conversation, type:
 
 ```
 Please perform a security review of this branch before I merge to main.
 Follow the instructions in security-review-prompt.md.
+```
+
+### Step 7: QA Review
+
+After security review passes, request QA review:
+
+```
+Please perform a QA review of this branch before I merge to main.
+Follow the instructions in qa-review-prompt.md.
 ```
 
 ### What Claude Will Do
@@ -105,12 +116,12 @@ about CORS but this is acceptable for a public API.
 None - proceed with merge to main.
 ```
 
-### Interpreting Results
+### Interpreting Security Review Results
 
-**✅ PASS**: Safe to merge to main
-- No critical issues found
+**✅ PASS**: Safe from security perspective
+- No critical security issues
 - Warnings are acceptable
-- Proceed with merge
+- Proceed to QA review
 
 **❌ FAIL**: Do NOT merge
 - Critical security issues found
@@ -120,7 +131,24 @@ None - proceed with merge to main.
 **⚠️ Warnings**: Review and decide
 - Non-critical issues found
 - May be acceptable depending on context
-- Use judgment on whether to merge
+- Use judgment, then proceed to QA review
+
+### Interpreting QA Review Results
+
+**✅ PASS**: Adequate test coverage
+- Critical features tested
+- Test quality is good
+- Proceed with merge
+
+**⚠️ PASS WITH WARNINGS**: Some test gaps
+- Most features tested
+- Some non-critical gaps
+- Review gaps and decide if acceptable
+
+**❌ FAIL**: Critical tests missing
+- New features untested
+- Bug fix lacks regression test
+- Must add tests before merging
 
 ## What If Claude Finds Issues?
 
@@ -157,6 +185,54 @@ None - proceed with merge to main.
    ```
 
 5. Request new security review from Claude
+
+### Example: QA Review - Missing Tests
+
+**Claude's Report:**
+```markdown
+### ❌ Missing Tests (Critical)
+1. New account deletion feature (server.js:200-230) has no tests
+   - No test for successful deletion
+   - No test for authentication check
+   - No regression test
+
+### 🎯 Final Recommendation
+**RESULT:** ❌ FAIL - Critical tests missing
+```
+
+**How to Fix:**
+1. Create test file:
+   ```bash
+   mkdir -p tests
+   touch tests/account-deletion.test.js
+   ```
+
+2. Add tests (see TEST-GUIDELINES.md):
+   ```javascript
+   describe('Account Deletion', () => {
+     test('deletes user account with valid token', async () => {
+       // test implementation
+     });
+
+     test('returns 401 for invalid token', async () => {
+       // test implementation
+     });
+   });
+   ```
+
+3. Run tests:
+   ```bash
+   npm test
+   ```
+
+4. Commit tests:
+   ```bash
+   git add tests/
+   git commit -m "Add tests for account deletion feature"
+   git push
+   ```
+
+5. Request new QA review from Claude
 
 ### Example: Syntax Error Found
 
@@ -199,7 +275,8 @@ None - proceed with merge to main.
 2. **Feature Branch**: Isolate changes
 3. **Railway Testing**: Verify in production-like environment
 4. **Security Review**: AI-powered vulnerability detection
-5. **Main Branch**: Only stable, secure code
+5. **QA Review**: AI-powered test coverage verification
+6. **Main Branch**: Only stable, secure, tested code
 
 ### What We Prevent
 
@@ -209,6 +286,9 @@ None - proceed with merge to main.
 - ❌ Vulnerable dependencies in production
 - ❌ Authentication bypasses
 - ❌ Database injection attacks
+- ❌ Untested features causing bugs
+- ❌ Regression bugs from changes
+- ❌ Code quality degradation
 
 ### Cost of Skipping
 
@@ -298,12 +378,16 @@ Then:
 
 ✅ **Always follow the workflow**
 ✅ **Always request security review from Claude**
-✅ **Only merge on ✅ PASS**
+✅ **Always request QA review from Claude**
+✅ **Only merge when BOTH reviews PASS**
 ✅ **Fix issues if ❌ FAIL**
 ✅ **Test on Railway before merging**
+✅ **Add tests for new features**
 
 🚨 **Never commit directly to main**
 🚨 **Never skip security review**
+🚨 **Never skip QA review**
 🚨 **Never merge on ❌ FAIL**
+🚨 **Never add features without tests**
 
-The security review is your safety net. Use it every time.
+The security and QA reviews are your safety net. Use them every time.

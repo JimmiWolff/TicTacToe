@@ -1527,4 +1527,4 @@ if (require.main === module) {
 }
 
 // Export for testing
-module.exports = { app, server, io, rooms, verifyToken };
+module.exports = { app, server, io, rooms, verifyToken, cleanupEmptyRooms, findAvailablePublicRoom };

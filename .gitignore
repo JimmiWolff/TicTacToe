@@ -12,3 +12,8 @@ coverage/
 # Azure deployment files
 .deployment
 deploy.cmd
+
+# Playwright
+tests/e2e/.auth/
+playwright-report/
+test-results/

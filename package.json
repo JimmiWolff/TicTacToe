@@ -10,7 +10,10 @@
     "postinstall": "echo 'Installation complete'",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "test:e2e": "npx playwright test",
+    "test:e2e:headed": "npx playwright test --headed",
+    "test:e2e:ui": "npx playwright test --ui"
   },
   "engines": {
     "node": ">=18.0.0",
@@ -46,6 +49,7 @@
   "license": "MIT",
   "homepage": "https://github.com/JimmiWolff/TicTacToe#readme",
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "jest": "^30.2.0",
     "snyk": "^1.1302.1",
     "socket.io-client": "^4.8.3",
@@ -59,6 +63,10 @@
     "testMatch": [
       "**/__tests__/**/*.js",
       "**/?(*.)+(spec|test).js"
+    ],
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "/tests/e2e/"
     ],
     "collectCoverageFrom": [
       "*.js",

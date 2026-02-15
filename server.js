@@ -580,23 +580,25 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// Initialize database connection and game state indexes
-connectToDatabase()
-    .then(() => gameStateService.ensureIndexes())
-    .catch(console.error);
+// Initialize database connection and startup tasks (skip in test mode)
+if (require.main === module) {
+    connectToDatabase()
+        .then(() => gameStateService.ensureIndexes())
+        .catch(console.error);
 
-// Cleanup empty rooms every 5 minutes
-setInterval(cleanupEmptyRooms, 300000);
+    // Cleanup empty rooms every 5 minutes
+    setInterval(cleanupEmptyRooms, 300000);
 
-// Cleanup old games from database every 24 hours
-setInterval(() => {
-    gameStateService.cleanupOldGames().catch(console.error);
-}, 24 * 60 * 60 * 1000);
+    // Cleanup old games from database every 24 hours
+    setInterval(() => {
+        gameStateService.cleanupOldGames().catch(console.error);
+    }, 24 * 60 * 60 * 1000);
 
-// Run cleanup on startup after 1 minute
-setTimeout(() => {
-    gameStateService.cleanupOldGames().catch(console.error);
-}, 60000);
+    // Run cleanup on startup after 1 minute
+    setTimeout(() => {
+        gameStateService.cleanupOldGames().catch(console.error);
+    }, 60000);
+}
 
 // Socket.IO connection handling
 io.on('connection', (socket) => {
@@ -1487,36 +1489,42 @@ const PORT = process.env.PORT || process.env.WEBSITES_PORT || 3000;
 const HOST = process.env.RAILWAY_STATIC_URL ? '0.0.0.0' : (process.env.WEBSITE_HOSTNAME || '0.0.0.0');
 // Force deployment trigger
 
-// Enhanced error handling for Azure
-server.on('error', (error) => {
-    console.error('Server error:', error);
-    Sentry.captureException(error);
-    if (error.code === 'EADDRINUSE') {
-        console.error(`Port ${PORT} is already in use`);
-        process.exit(1);
-    }
-});
-
-// Graceful shutdown handling
-process.on('SIGTERM', () => {
-    console.log('SIGTERM received, shutting down gracefully');
-    server.close(() => {
-        console.log('Process terminated');
-        process.exit(0);
+// Only start listening and register process handlers when run directly
+if (require.main === module) {
+    // Enhanced error handling for Azure
+    server.on('error', (error) => {
+        console.error('Server error:', error);
+        Sentry.captureException(error);
+        if (error.code === 'EADDRINUSE') {
+            console.error(`Port ${PORT} is already in use`);
+            process.exit(1);
+        }
     });
-});
 
-process.on('SIGINT', () => {
-    console.log('SIGINT received, shutting down gracefully');
-    server.close(() => {
-        console.log('Process terminated');
-        process.exit(0);
+    // Graceful shutdown handling
+    process.on('SIGTERM', () => {
+        console.log('SIGTERM received, shutting down gracefully');
+        server.close(() => {
+            console.log('Process terminated');
+            process.exit(0);
+        });
     });
-});
 
-server.listen(PORT, HOST, () => {
-    console.log(`🚀 Server running on ${process.env.WEBSITE_HOSTNAME ? 'https://' + process.env.WEBSITE_HOSTNAME : `http://localhost:${PORT}`}`);
-    console.log(`📊 Health check: /health`);
-    console.log(`🎮 Multi-room game system ready - create or join rooms with game codes`);
-    console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
-});
+    process.on('SIGINT', () => {
+        console.log('SIGINT received, shutting down gracefully');
+        server.close(() => {
+            console.log('Process terminated');
+            process.exit(0);
+        });
+    });
+
+    server.listen(PORT, HOST, () => {
+        console.log(`🚀 Server running on ${process.env.WEBSITE_HOSTNAME ? 'https://' + process.env.WEBSITE_HOSTNAME : `http://localhost:${PORT}`}`);
+        console.log(`📊 Health check: /health`);
+        console.log(`🎮 Multi-room game system ready - create or join rooms with game codes`);
+        console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
+    });
+}
+
+// Export for testing
+module.exports = { app, server, io, rooms, verifyToken };

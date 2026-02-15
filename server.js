@@ -31,6 +31,7 @@ const fs = require('fs');
 const { connectToDatabase, getDatabase } = require('./database');
 const highscoreService = require('./highscore');
 const gameStateService = require('./gameState');
+const { checkWin, checkDraw, isValidMove, switchToMovementPhase, createGameRoom, generateRoomCode, resetGame } = require('./gameLogic');
 
 const app = express();
 const server = http.createServer(app);
@@ -292,40 +293,7 @@ app.get('/api/rooms/:roomCode', (req, res) => {
 // Room management system
 const rooms = new Map();
 
-// Game room structure
-function createGameRoom(roomId) {
-    return {
-        id: roomId,
-        players: [],
-        maxPlayers: 2,
-        board: ['', '', '', '', '', '', '', '', ''],
-        currentPlayer: 'X',
-        gameActive: true,
-        scores: { X: 0, O: 0, draw: 0 },
-        // New properties for move pieces feature
-        piecesPlaced: { X: 0, O: 0 },
-        gamePhase: 'placement', // 'placement' or 'movement'
-        selectedPiece: null,
-        maxPieces: 3,
-        // Piece colors for synchronization
-        pieceColors: {
-            X: '#e74c3c',
-            O: '#3498db'
-        },
-        createdAt: new Date(),
-        lastActivity: new Date()
-    };
-}
-
-// Generate unique room code
-function generateRoomCode() {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let code = '';
-    for (let i = 0; i < 6; i++) {
-        code += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return code;
-}
+// createGameRoom and generateRoomCode imported from gameLogic.js
 
 // Get or create room (with MongoDB persistence)
 async function getOrCreateRoom(roomId) {
@@ -528,15 +496,7 @@ async function saveGameState(room) {
     await gameStateService.saveGame(room.id, gameData);
 }
 
-function resetGame(room) {
-    room.board = ['', '', '', '', '', '', '', '', ''];
-    room.currentPlayer = 'X';
-    room.gameActive = true;
-    room.piecesPlaced = { X: 0, O: 0 };
-    room.gamePhase = 'placement';
-    room.selectedPiece = null;
-    room.lastActivity = new Date();
-}
+// resetGame imported from gameLogic.js
 
 async function updateHighscoresAfterGame(room, winner) {
     try {
@@ -613,51 +573,7 @@ async function deleteUserAccount(userId) {
     }
 }
 
-function checkWin(board) {
-    const winPatterns = [
-        [0, 1, 2], [3, 4, 5], [6, 7, 8],
-        [0, 3, 6], [1, 4, 7], [2, 5, 8],
-        [0, 4, 8], [2, 4, 6]
-    ];
-
-    for (let pattern of winPatterns) {
-        const [a, b, c] = pattern;
-        if (board[a] && board[a] === board[b] && board[a] === board[c]) {
-            return { winner: board[a], pattern };
-        }
-    }
-    return null;
-}
-
-function checkDraw(board) {
-    return board.every(cell => cell !== '');
-}
-
-// New helper functions for move pieces feature
-function isValidMove(fromIndex, toIndex, player, room) {
-    // Check if fromIndex has the player's piece
-    if (room.board[fromIndex] !== player) {
-        return false;
-    }
-
-    // Check if toIndex is empty
-    if (room.board[toIndex] !== '') {
-        return false;
-    }
-
-    // Pieces can move to any empty cell on the board
-    return true;
-}
-
-
-function switchToMovementPhase(room) {
-    if (room.piecesPlaced.X >= room.maxPieces &&
-        room.piecesPlaced.O >= room.maxPieces) {
-        room.gamePhase = 'movement';
-        return true;
-    }
-    return false;
-}
+// checkWin, checkDraw, isValidMove, switchToMovementPhase imported from gameLogic.js
 
 // Serve the main HTML file
 app.get('/', (req, res) => {

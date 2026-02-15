@@ -58,12 +58,24 @@ npm test      # outputs: "No tests specified"
    - Test all functionality in the live environment
    - Check both web app and iOS app integration
 
-6. **Merge to Main ONLY After Testing**
-   ```bash
-   git checkout main
-   git merge feature/descriptive-name
-   git push origin main
+6. **Request Claude Security Review Before Merging**
+
+   **IMPORTANT: Ask Claude to perform a security review using this exact prompt:**
+
    ```
+   Please perform a security review of this branch before I merge to main.
+   Follow the instructions in security-review-prompt.md.
+   ```
+
+   **Claude will:**
+   - Analyze all code changes in your branch
+   - Check for security vulnerabilities using AI-powered analysis
+   - Validate syntax with `node --check`
+   - Run `npm audit` for dependency vulnerabilities
+   - Check for hardcoded secrets, injection risks, auth issues
+   - Provide a comprehensive security report with PASS/FAIL recommendation
+
+   **Only merge to main if Claude gives ✅ PASS**
 
 **Why This Matters:**
 - Main branch deploys directly to production (play.tictactoe.dk)
@@ -78,6 +90,102 @@ npm test      # outputs: "No tests specified"
 - ❌ Multiple "fix" commits in a row on main
 - ❌ Skipping syntax validation (`node --check`)
 - ❌ Not testing on Railway before merging
+- ❌ Merging without running security review
+
+## Security Review Agent (Claude AI)
+
+**A mandatory AI-powered security review must be performed before merging to main.**
+
+Claude acts as your security review agent, using AI to intelligently analyze code changes for vulnerabilities.
+
+### How to Request Security Review
+
+Simply ask Claude in the conversation:
+
+```
+Please perform a security review of this branch before I merge to main.
+Follow the instructions in security-review-prompt.md.
+```
+
+**Claude will automatically:**
+1. Get the list of changed files (`git diff main...HEAD`)
+2. Read and analyze each modified file
+3. Run syntax checks (`node --check`)
+4. Check for hardcoded secrets and vulnerabilities
+5. Run `npm audit` for dependency issues
+6. Verify authentication and authorization
+7. Provide a detailed security report with PASS/FAIL
+
+### Why Claude Instead of a Script?
+
+- **AI-Powered Analysis**: Understands context, not just pattern matching
+- **Fewer False Positives**: Distinguishes real risks from safe code
+- **Detailed Explanations**: Explains WHY something is a security issue
+- **Actionable Fixes**: Suggests specific solutions for each problem
+- **Adaptive**: Learns from code patterns and best practices
+- **Comprehensive**: Checks syntax, secrets, injection, auth, dependencies in one review
+
+### Security Checks Claude Performs
+
+1. **Syntax Validation** ✓
+   - Runs `node --check` on all JavaScript files
+   - Prevents deployment-breaking syntax errors
+
+2. **Secret Detection** 🔐
+   - Scans for hardcoded passwords, API keys, secrets
+   - Checks for MongoDB connection strings with credentials
+   - Verifies .env is not committed to git
+
+3. **Vulnerability Scanning** 💉
+   - Detects use of `eval()` and `Function()` constructor
+   - Checks for SQL/NoSQL injection patterns
+   - Identifies code injection in socket handlers
+   - Analyzes authentication and authorization logic
+
+4. **Dependency Audit** 📦
+   - Runs `npm audit` to check for vulnerable packages
+   - Flags critical and high severity issues
+   - Reports vulnerability counts
+
+5. **Authentication Security** 🔑
+   - Verifies endpoints have token verification
+   - Checks socket handlers authenticate users
+   - Ensures users can only access their own data
+
+6. **CORS & Headers** 🛡️
+   - Reviews CORS configuration
+   - Warns about overly permissive settings
+
+### Understanding Claude's Review Results
+
+**✅ PASS - Safe to Merge**
+```
+### 🎯 Final Recommendation
+**RESULT:** ✅ PASS - Safe to merge
+```
+→ You can proceed with merging to main
+
+**❌ FAIL - Do NOT Merge**
+```
+### 🎯 Final Recommendation
+**RESULT:** ❌ FAIL - Do NOT merge
+```
+→ Fix all critical issues before merging
+
+**⚠️ PASS with Warnings**
+```
+### ⚠️ Warnings
+- CORS allows all origins (acceptable for public API)
+```
+→ Review warnings, then merge if acceptable
+
+### When Claude Fails the Review
+
+1. Read the **Critical Issues** section carefully
+2. Fix each issue (Claude provides file:line references)
+3. Commit the fixes to your feature branch
+4. Request another security review from Claude
+5. Only merge once you get ✅ PASS
 
 ## Architecture Overview
 

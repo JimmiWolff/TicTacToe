@@ -435,6 +435,14 @@ class TicTacToeMultiplayer {
             }
         });
 
+        this.socket.on('playerAccountDeleted', (data) => {
+            this.showGameMessage(data.message, 'info');
+            setTimeout(() => {
+                this.resetToLoginScreen();
+                this.showRoomModal();
+            }, 2000);
+        });
+
         this.socket.on('gameDeleted', (data) => {
             this.showGameMessage(data.message, 'info');
             // If user is in this game, redirect to room selection

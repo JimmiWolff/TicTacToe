@@ -6,6 +6,9 @@ yarn-error.log*
 .env
 *.log
 
+# Test coverage
+coverage/
+
 # Azure deployment files
 .deployment
 deploy.cmd

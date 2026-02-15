@@ -2,6 +2,23 @@
 
 Guidelines for writing tests for the Tic Tac Toe multiplayer game.
 
+## Recommended Testing Stack
+
+```
+Testing Strategy:
+├── Backend
+│   ├── Jest + Supertest (unit + integration tests)
+│   └── Coverage: Functions, APIs, Socket.IO
+│
+├── Web App
+│   ├── Playwright ⭐ (E2E tests)
+│   └── Coverage: User flows, real-time interactions
+│
+└── iOS App
+    ├── XCTest (unit tests)
+    └── XCUITest (UI tests)
+```
+
 ## Test Structure
 
 ### Backend Tests (Node.js + Jest)
@@ -12,6 +29,18 @@ Guidelines for writing tests for the Tic Tac Toe multiplayer game.
 - `feature.test.js` - Unit tests for a feature
 - `integration.test.js` - Integration tests
 - `api.test.js` - API endpoint tests
+
+### Web App E2E Tests (Playwright)
+
+**Location:** `/tests/e2e/` directory
+
+**File naming:**
+- `auth.spec.js` - Authentication flows
+- `game.spec.js` - Game play scenarios
+- `multiplayer.spec.js` - Real-time multiplayer
+- `account.spec.js` - Account management
+
+**See:** `PLAYWRIGHT-GUIDE.md` for complete Playwright documentation
 
 **Example Test Structure:**
 ```javascript

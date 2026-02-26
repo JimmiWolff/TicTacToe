@@ -3,6 +3,7 @@ import SwiftUI
 struct ContentView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
     @EnvironmentObject var gameViewModel: GameViewModel
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         ZStack {
@@ -21,31 +22,33 @@ struct ContentView: View {
                 if authViewModel.isGuestMode {
                     // Guest mode: Show banner with option to login for online features
                     VStack(spacing: 0) {
-                        // Guest mode banner
-                        VStack(spacing: 8) {
-                            Text("Guest Mode")
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(.white)
-                            Text("Login to access online multiplayer and leaderboards")
-                                .font(.system(size: 13))
-                                .foregroundColor(.white.opacity(0.8))
-                                .multilineTextAlignment(.center)
-                            Button(action: {
-                                authViewModel.logout()
-                            }) {
-                                Text("Login Now")
-                                    .font(.system(size: 14, weight: .medium))
-                                    .foregroundColor(Color(hex: "#667eea"))
-                                    .padding(.horizontal, 20)
-                                    .padding(.vertical, 8)
-                                    .background(Color.white)
-                                    .cornerRadius(8)
+                        // Guest mode banner (hidden during local gameplay)
+                        if gameViewModel.currentRoom == nil {
+                            VStack(spacing: 8) {
+                                Text("Guest Mode")
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundColor(.white)
+                                Text("Login to access online multiplayer and leaderboards")
+                                    .font(.system(size: 13))
+                                    .foregroundColor(.white.opacity(0.8))
+                                    .multilineTextAlignment(.center)
+                                Button(action: {
+                                    authViewModel.logout()
+                                }) {
+                                    Text("Login Now")
+                                        .font(.system(size: 14, weight: .medium))
+                                        .foregroundColor(Color(hex: "#667eea"))
+                                        .padding(.horizontal, 20)
+                                        .padding(.vertical, 8)
+                                        .background(Color.white)
+                                        .cornerRadius(8)
+                                }
+                                .padding(.top, 4)
                             }
-                            .padding(.top, 4)
+                            .padding(.vertical, 16)
+                            .frame(maxWidth: .infinity)
+                            .background(Color.white.opacity(0.15))
                         }
-                        .padding(.vertical, 16)
-                        .frame(maxWidth: .infinity)
-                        .background(Color.white.opacity(0.15))
 
                         // Show room selection with features disabled for guests
                         if gameViewModel.currentRoom == nil {
@@ -63,6 +66,19 @@ struct ContentView: View {
                 }
             } else {
                 LoginView()
+            }
+        }
+        .onChange(of: scenePhase) { newPhase in
+            guard !authViewModel.isGuestMode else { return }
+            switch newPhase {
+            case .background:
+                SocketService.shared.disconnect()
+            case .active:
+                if authViewModel.isAuthenticated {
+                    SocketService.shared.connect()
+                }
+            default:
+                break
             }
         }
         .preferredColorScheme(.dark)

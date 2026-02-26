@@ -13,6 +13,7 @@ class AuthViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var isGuestMode = false
 
+    private var isAuthenticating = false
     private let authService = AuthService.shared
     private let socketService = SocketService.shared
     private var cancellables = Set<AnyCancellable>()
@@ -44,6 +45,7 @@ class AuthViewModel: ObservableObject {
                     self?.authenticateSocket()
                 } else {
                     self?.isSocketAuthenticated = false
+                    self?.isAuthenticating = false
                 }
             }
             .store(in: &cancellables)
@@ -80,6 +82,7 @@ class AuthViewModel: ObservableObject {
             .sink { [weak self] response in
                 print("AuthViewModel: Received loginResponse - success: \(response.success), message: \(response.message ?? "nil")")
                 self?.isLoading = false
+                self?.isAuthenticating = false
                 if response.success {
                     self?.isSocketAuthenticated = true
                     print("AuthViewModel: Socket authenticated successfully")
@@ -206,10 +209,15 @@ class AuthViewModel: ObservableObject {
     }
 
     func authenticateSocket() {
+        guard !isAuthenticating, !isSocketAuthenticated else {
+            print("AuthViewModel: Skipping duplicate auth (authenticating: \(isAuthenticating), authenticated: \(isSocketAuthenticated))")
+            return
+        }
         guard let token = authService.accessToken else {
             print("AuthViewModel: No token available for socket authentication")
             return
         }
+        isAuthenticating = true
         print("AuthViewModel: Sending socket login with username: \(username.isEmpty ? "nil" : username)")
         socketService.login(token: token, customUsername: username.isEmpty ? nil : username)
     }

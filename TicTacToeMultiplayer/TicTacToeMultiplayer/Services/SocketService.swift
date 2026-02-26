@@ -23,6 +23,7 @@ class SocketService: ObservableObject {
     let gameDeleted = PassthroughSubject<String, Never>()
     let errorReceived = PassthroughSubject<String, Never>()
     let connectionStatus = CurrentValueSubject<Bool, Never>(false)
+    let didReconnect = PassthroughSubject<Void, Never>()
 
     @Published var isConnected = false
 
@@ -31,8 +32,10 @@ class SocketService: ObservableObject {
         manager = SocketManager(socketURL: serverURL, config: [
             .log(true),
             .reconnects(true),
-            .reconnectAttempts(5),
-            .reconnectWait(5)
+            .reconnectAttempts(-1),
+            .reconnectWait(3),
+            .forceWebsockets(true),
+            .connectParams(["EIO": "4"])
         ])
         socket = manager.defaultSocket
 
@@ -50,6 +53,11 @@ class SocketService: ObservableObject {
             print("Socket disconnected")
             self?.isConnected = false
             self?.connectionStatus.send(false)
+        }
+
+        socket.on(clientEvent: .reconnect) { [weak self] _, _ in
+            print("Socket reconnected")
+            self?.didReconnect.send()
         }
 
         socket.on(clientEvent: .error) { [weak self] data, _ in

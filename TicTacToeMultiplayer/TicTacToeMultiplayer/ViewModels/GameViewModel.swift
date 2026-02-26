@@ -13,6 +13,9 @@ class GameViewModel: ObservableObject {
     @Published var myPlayer: Player?
     @Published var selectedPieceIndex: Int?
 
+    // Local game state
+    @Published var isLocalGame = false
+
     // UI state
     @Published var showSettings = false
     @Published var showHighscores = false
@@ -40,11 +43,6 @@ class GameViewModel: ObservableObject {
                 self?.isJoiningRoom = false
                 if response.success {
                     self?.currentRoom = response.roomCode
-                    // Re-send login after joining room to be added as a player
-                    // (Same pattern as web client)
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                        self?.authenticateToRoom()
-                    }
                 } else {
                     self?.errorMessage = response.message
                 }
@@ -152,6 +150,18 @@ class GameViewModel: ObservableObject {
             }
             .store(in: &cancellables)
 
+        // Reconnection - rejoin current room to re-sync game state
+        socketService.didReconnect
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] in
+                guard let self = self,
+                      let room = self.currentRoom,
+                      room != "LOCAL" else { return }
+                print("GameViewModel: Socket reconnected, rejoining room \(room)")
+                self.socketService.joinRoom(roomCode: room)
+            }
+            .store(in: &cancellables)
+
         // Errors
         socketService.errorReceived
             .receive(on: DispatchQueue.main)
@@ -162,9 +172,17 @@ class GameViewModel: ObservableObject {
     }
 
     private func updateMyPlayer() {
-        guard let myPlayer = myPlayer else { return }
-        if let updated = gameState.players.first(where: { $0.userId == myPlayer.userId }) {
-            self.myPlayer = updated
+        if let myPlayer = myPlayer {
+            // Update existing myPlayer from game state
+            if let updated = gameState.players.first(where: { $0.userId == myPlayer.userId }) {
+                self.myPlayer = updated
+            }
+        } else {
+            // myPlayer not set yet — identify our player from game state by authService userId
+            if let userId = authService.userId,
+               let player = gameState.players.first(where: { $0.userId == userId }) {
+                self.myPlayer = player
+            }
         }
     }
 
@@ -225,6 +243,7 @@ class GameViewModel: ObservableObject {
         gameState = .empty
         myPlayer = nil
         selectedPieceIndex = nil
+        isLocalGame = false
     }
 
     func clearAllState() {
@@ -233,6 +252,7 @@ class GameViewModel: ObservableObject {
         gameState = .empty
         myPlayer = nil
         selectedPieceIndex = nil
+        isLocalGame = false
         leaderboard = []
         playerStats = .empty
         activeGames = []
@@ -244,6 +264,12 @@ class GameViewModel: ObservableObject {
 
     func cellTapped(index: Int) {
         guard gameState.gameActive else { return }
+
+        if isLocalGame {
+            processLocalMove(index: index)
+            return
+        }
+
         guard let mySymbol = myPlayer?.symbol ?? myPlayer?.oddsSymbol else { return }
         guard gameState.currentPlayer == mySymbol else {
             errorMessage = "It's not your turn!"
@@ -290,12 +316,161 @@ class GameViewModel: ObservableObject {
     }
 
     func newGame() {
+        if isLocalGame {
+            gameState.board = Array(repeating: "", count: 9)
+            gameState.currentPlayer = "X"
+            gameState.gameActive = true
+            gameState.piecesPlaced = PiecesPlaced(X: 0, O: 0)
+            gameState.gamePhase = "placement"
+            selectedPieceIndex = nil
+            return
+        }
         socketService.resetGame()
         selectedPieceIndex = nil
     }
 
     func resetScore() {
+        if isLocalGame {
+            gameState.scores = Scores(X: 0, O: 0, draw: 0)
+            return
+        }
         socketService.resetScore()
+    }
+
+    // MARK: - Local Game
+
+    private let winPatterns = [
+        [0, 1, 2], [3, 4, 5], [6, 7, 8], // rows
+        [0, 3, 6], [1, 4, 7], [2, 5, 8], // columns
+        [0, 4, 8], [2, 4, 6]              // diagonals
+    ]
+
+    func startLocalGame() {
+        isLocalGame = true
+        gameState = GameState(
+            players: [
+                Player(username: "Player X", symbol: "X"),
+                Player(username: "Player O", symbol: "O")
+            ],
+            board: Array(repeating: "", count: 9),
+            currentPlayer: "X",
+            gameActive: true,
+            scores: Scores(X: 0, O: 0, draw: 0),
+            piecesPlaced: PiecesPlaced(X: 0, O: 0),
+            gamePhase: "placement",
+            maxPieces: 3,
+            pieceColors: PieceColors(X: "#e74c3c", O: "#3498db")
+        )
+        currentRoom = "LOCAL"
+        selectedPieceIndex = nil
+    }
+
+    private func processLocalMove(index: Int) {
+        let currentSymbol = gameState.currentPlayer
+
+        if gameState.gamePhase == "placement" {
+            guard gameState.board[index].isEmpty else {
+                errorMessage = "Cell is already occupied!"
+                return
+            }
+
+            // Place piece
+            gameState.board[index] = currentSymbol
+            if currentSymbol == "X" {
+                gameState.piecesPlaced.X += 1
+            } else {
+                gameState.piecesPlaced.O += 1
+            }
+
+            // Check win
+            if let result = checkWin(board: gameState.board) {
+                handleLocalGameOver(winner: result.winner, pattern: result.pattern)
+                return
+            }
+
+            // Check draw
+            if checkDraw(board: gameState.board) {
+                handleLocalGameOver(winner: nil, pattern: nil)
+                return
+            }
+
+            // Check if we should switch to movement phase
+            if gameState.piecesPlaced.X >= gameState.maxPieces &&
+               gameState.piecesPlaced.O >= gameState.maxPieces {
+                gameState.gamePhase = "movement"
+            }
+
+            // Switch turn
+            gameState.currentPlayer = currentSymbol == "X" ? "O" : "X"
+
+        } else if gameState.gamePhase == "movement" {
+            if let selected = selectedPieceIndex {
+                if index == selected {
+                    // Deselect
+                    selectedPieceIndex = nil
+                } else if gameState.board[index].isEmpty {
+                    // Move piece
+                    gameState.board[index] = gameState.board[selected]
+                    gameState.board[selected] = ""
+                    selectedPieceIndex = nil
+
+                    // Check win after move
+                    if let result = checkWin(board: gameState.board) {
+                        handleLocalGameOver(winner: result.winner, pattern: result.pattern)
+                        return
+                    }
+
+                    // Switch turn
+                    gameState.currentPlayer = currentSymbol == "X" ? "O" : "X"
+                } else if gameState.board[index] == currentSymbol {
+                    // Select different own piece
+                    selectedPieceIndex = index
+                } else {
+                    errorMessage = "You can only move your own pieces!"
+                }
+            } else {
+                // First tap - select piece
+                if gameState.board[index] == currentSymbol {
+                    selectedPieceIndex = index
+                } else if gameState.board[index].isEmpty {
+                    errorMessage = "Select one of your pieces first!"
+                } else {
+                    errorMessage = "That's not your piece!"
+                }
+            }
+        }
+    }
+
+    private func checkWin(board: [String]) -> (winner: String, pattern: [Int])? {
+        for pattern in winPatterns {
+            let a = pattern[0], b = pattern[1], c = pattern[2]
+            if !board[a].isEmpty && board[a] == board[b] && board[a] == board[c] {
+                return (winner: board[a], pattern: pattern)
+            }
+        }
+        return nil
+    }
+
+    private func checkDraw(board: [String]) -> Bool {
+        return board.allSatisfy { !$0.isEmpty }
+    }
+
+    private func handleLocalGameOver(winner: String?, pattern: [Int]?) {
+        gameState.gameActive = false
+
+        if let winner = winner {
+            if winner == "X" {
+                gameState.scores.X += 1
+            } else {
+                gameState.scores.O += 1
+            }
+            toastMessage = "Player \(winner) wins!"
+        } else {
+            gameState.scores.draw += 1
+            toastMessage = "It's a draw!"
+        }
+
+        selectedPieceIndex = nil
     }
 
     // MARK: - Settings
@@ -325,6 +500,9 @@ class GameViewModel: ObservableObject {
     // MARK: - Helpers
 
     var isMyTurn: Bool {
+        if isLocalGame {
+            return gameState.gameActive
+        }
         guard let mySymbol = myPlayer?.symbol ?? myPlayer?.oddsSymbol else { return false }
         return gameState.currentPlayer == mySymbol && gameState.gameActive
     }
@@ -334,6 +512,12 @@ class GameViewModel: ObservableObject {
     }
 
     var statusText: String {
+        if isLocalGame {
+            if !gameState.gameActive {
+                return "Game Over"
+            }
+            return "Player \(gameState.currentPlayer)'s turn"
+        }
         if !gameState.gameActive {
             if gameState.players.count < 2 {
                 return "Waiting for opponent..."

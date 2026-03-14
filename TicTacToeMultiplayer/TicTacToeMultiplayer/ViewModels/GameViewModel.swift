@@ -58,6 +58,10 @@ class GameViewModel: ObservableObject {
                     if let roomCode = response.roomCode {
                         self?.currentRoom = roomCode
                     }
+                    // Rejoin current room after re-authentication (e.g. returning from background)
+                    if let room = self?.currentRoom, room != "LOCAL" {
+                        self?.socketService.joinRoom(roomCode: room)
+                    }
                 }
             }
             .store(in: &cancellables)

@@ -322,6 +322,8 @@ async function getOrCreateRoom(roomId) {
             selectedPiece: null,
             maxPieces: savedGame.maxPieces,
             pieceColors: savedGame.pieceColors,
+            lastWinner: savedGame.lastWinner || null,
+            lastStarter: savedGame.lastStarter || null,
             createdAt: savedGame.createdAt,
             lastActivity: savedGame.lastActivity
         };
@@ -490,6 +492,8 @@ async function saveGameState(room) {
         gamePhase: room.gamePhase,
         maxPieces: room.maxPieces,
         pieceColors: room.pieceColors,
+        lastWinner: room.lastWinner,
+        lastStarter: room.lastStarter,
         createdAt: room.createdAt
     };
 
@@ -1073,6 +1077,7 @@ io.on('connection', (socket) => {
             if (winResult) {
                 room.gameActive = false;
                 room.scores[winResult.winner]++;
+                room.lastWinner = winResult.winner;
 
                 // Update highscores
                 updateHighscoresAfterGame(room, winResult.winner);
@@ -1093,6 +1098,7 @@ io.on('connection', (socket) => {
                 // Only check for draw in placement phase
                 room.gameActive = false;
                 room.scores.draw++;
+                room.lastWinner = null;
 
                 // Update highscores for draw
                 updateHighscoresAfterGame(room, null);

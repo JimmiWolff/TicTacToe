@@ -273,6 +273,12 @@ describe('createGameRoom', () => {
         expect(room.pieceColors.O).toBe('#3498db');
     });
 
+    test('initializes lastWinner and lastStarter as null', () => {
+        const room = createGameRoom('ROOM1');
+        expect(room.lastWinner).toBeNull();
+        expect(room.lastStarter).toBeNull();
+    });
+
     test('creates room with timestamps', () => {
         const before = new Date();
         const room = createGameRoom('ROOM1');
@@ -315,11 +321,55 @@ describe('resetGame', () => {
         expect(room.board).toEqual(['', '', '', '', '', '', '', '', '']);
     });
 
-    test('sets current player to X', () => {
+    test('defaults to X on first game (no lastWinner or lastStarter)', () => {
         const room = createGameRoom('ROOM1');
         room.currentPlayer = 'O';
         resetGame(room);
         expect(room.currentPlayer).toBe('X');
+    });
+
+    test('loser starts after X wins', () => {
+        const room = createGameRoom('ROOM1');
+        room.lastWinner = 'X';
+        resetGame(room);
+        expect(room.currentPlayer).toBe('O');
+    });
+
+    test('loser starts after O wins', () => {
+        const room = createGameRoom('ROOM1');
+        room.lastWinner = 'O';
+        resetGame(room);
+        expect(room.currentPlayer).toBe('X');
+    });
+
+    test('alternates starter on draw (X started)', () => {
+        const room = createGameRoom('ROOM1');
+        room.lastWinner = null;
+        room.lastStarter = 'X';
+        resetGame(room);
+        expect(room.currentPlayer).toBe('O');
+    });
+
+    test('alternates starter on draw (O started)', () => {
+        const room = createGameRoom('ROOM1');
+        room.lastWinner = null;
+        room.lastStarter = 'O';
+        resetGame(room);
+        expect(room.currentPlayer).toBe('X');
+    });
+
+    test('sets lastStarter to currentPlayer after reset', () => {
+        const room = createGameRoom('ROOM1');
+        room.lastWinner = 'X';
+        resetGame(room);
+        expect(room.lastStarter).toBe(room.currentPlayer);
+    });
+
+    test('clears lastWinner after reset', () => {
+        const room = createGameRoom('ROOM1');
+        room.lastWinner = 'X';
+        resetGame(room);
+        expect(room.lastWinner).toBeNull();
     });
 
     test('sets game to active', () => {

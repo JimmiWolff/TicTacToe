@@ -61,6 +61,8 @@ function createGameRoom(roomId) {
             X: '#e74c3c',
             O: '#3498db'
         },
+        lastWinner: null,
+        lastStarter: null,
         createdAt: new Date(),
         lastActivity: new Date()
     };
@@ -77,7 +79,20 @@ function generateRoomCode() {
 
 function resetGame(room) {
     room.board = ['', '', '', '', '', '', '', '', ''];
-    room.currentPlayer = 'X';
+
+    if (room.lastWinner) {
+        // Loser starts next game
+        room.currentPlayer = room.lastWinner === 'X' ? 'O' : 'X';
+    } else if (room.lastStarter) {
+        // Draw: alternate starter
+        room.currentPlayer = room.lastStarter === 'X' ? 'O' : 'X';
+    } else {
+        // Very first game: X starts
+        room.currentPlayer = 'X';
+    }
+    room.lastStarter = room.currentPlayer;
+    room.lastWinner = null;
+
     room.gameActive = true;
     room.piecesPlaced = { X: 0, O: 0 };
     room.gamePhase = 'placement';

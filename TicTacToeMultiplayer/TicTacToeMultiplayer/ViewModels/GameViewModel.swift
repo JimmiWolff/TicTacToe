@@ -15,6 +15,8 @@ class GameViewModel: ObservableObject {
 
     // Local game state
     @Published var isLocalGame = false
+    private var lastLocalWinner: String? = nil
+    private var lastLocalStarter: String? = nil
 
     // UI state
     @Published var showSettings = false
@@ -176,17 +178,16 @@ class GameViewModel: ObservableObject {
     }
 
     private func updateMyPlayer() {
-        if let myPlayer = myPlayer {
-            // Update existing myPlayer from game state
-            if let updated = gameState.players.first(where: { $0.userId == myPlayer.userId }) {
-                self.myPlayer = updated
-            }
-        } else {
-            // myPlayer not set yet — identify our player from game state by authService userId
-            if let userId = authService.userId,
-               let player = gameState.players.first(where: { $0.userId == userId }) {
-                self.myPlayer = player
-            }
+        // Try matching by existing myPlayer's userId
+        if let existingUserId = myPlayer?.userId,
+           let updated = gameState.players.first(where: { $0.userId == existingUserId }) {
+            self.myPlayer = updated
+            return
+        }
+        // Fallback: identify our player using authService userId
+        if let userId = authService.userId,
+           let player = gameState.players.first(where: { $0.userId == userId }) {
+            self.myPlayer = player
         }
     }
 
@@ -248,6 +249,8 @@ class GameViewModel: ObservableObject {
         myPlayer = nil
         selectedPieceIndex = nil
         isLocalGame = false
+        lastLocalWinner = nil
+        lastLocalStarter = nil
     }
 
     func clearAllState() {
@@ -257,6 +260,8 @@ class GameViewModel: ObservableObject {
         myPlayer = nil
         selectedPieceIndex = nil
         isLocalGame = false
+        lastLocalWinner = nil
+        lastLocalStarter = nil
         leaderboard = []
         playerStats = .empty
         activeGames = []
@@ -322,7 +327,20 @@ class GameViewModel: ObservableObject {
     func newGame() {
         if isLocalGame {
             gameState.board = Array(repeating: "", count: 9)
-            gameState.currentPlayer = "X"
+
+            if let winner = lastLocalWinner {
+                // Loser starts next game
+                gameState.currentPlayer = winner == "X" ? "O" : "X"
+            } else if let starter = lastLocalStarter {
+                // Draw: alternate starter
+                gameState.currentPlayer = starter == "X" ? "O" : "X"
+            } else {
+                // Very first game: X starts
+                gameState.currentPlayer = "X"
+            }
+            lastLocalStarter = gameState.currentPlayer
+            lastLocalWinner = nil
+
             gameState.gameActive = true
             gameState.piecesPlaced = PiecesPlaced(X: 0, O: 0)
             gameState.gamePhase = "placement"
@@ -351,6 +369,8 @@ class GameViewModel: ObservableObject {
 
     func startLocalGame() {
         isLocalGame = true
+        lastLocalWinner = nil
+        lastLocalStarter = nil
         gameState = GameState(
             players: [
                 Player(username: "Player X", symbol: "X"),
@@ -461,6 +481,7 @@ class GameViewModel: ObservableObject {
 
     private func handleLocalGameOver(winner: String?, pattern: [Int]?) {
         gameState.gameActive = false
+        lastLocalWinner = winner
 
         if let winner = winner {
             if winner == "X" {
